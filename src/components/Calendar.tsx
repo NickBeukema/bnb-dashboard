@@ -14,6 +14,7 @@ const Calendar: React.FC = () => {
 
     const [events, setEvents] = useState<CalendarSource[]>([]);
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
     const fetchEvents = () => {
         fetch('/api/calendar')
@@ -37,6 +38,7 @@ const Calendar: React.FC = () => {
     }, []);
 
     const calendarEvents = events
+        .filter(source => !selectedLocation || source.name === selectedLocation)
         .reduce((acc, source) => [...acc, ...source.events], [] as CalendarEvent[]);
 
     const handleEventClick = (clickInfo: EventClickArg) => {
@@ -52,6 +54,14 @@ const Calendar: React.FC = () => {
 
         if (event) {
             setSelectedEvent(event);
+        }
+    };
+
+    const handleLocationClick = (location: string) => {
+        if (selectedLocation === location) {
+            setSelectedLocation(null);
+        } else {
+            setSelectedLocation(location);
         }
     };
 
@@ -88,11 +98,14 @@ const Calendar: React.FC = () => {
                 flexWrap: 'wrap'
             }}>
                 {events.map((source) => (
-                    <div key={source.name} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}>
+                    <div key={source.name}
+                        onClick={() => handleLocationClick(source.name)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            opacity: (!selectedLocation || selectedLocation === source.name ? 1 : 0.5)
+                        }}>
                         <div style={{
                             width: '16px',
                             height: '16px',
