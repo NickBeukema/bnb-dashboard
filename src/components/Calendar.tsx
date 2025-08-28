@@ -6,12 +6,11 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { EventClickArg } from '@fullcalendar/core';
 import { useEffect, useState } from 'react';
 import { CalendarEvent, CalendarSource } from '@/app/api/calendar/route';
+import EventModal from './EventModal';
 
 const Calendar: React.FC = () => {
-    const handleEventClick = (clickInfo: EventClickArg) => {
-        console.log(clickInfo);
-        alert(`Event: ${clickInfo.event.title}\nStarts on: ${clickInfo.event.startStr}\nEnds on: ${clickInfo.event.endStr}`);
-    };
+
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
     const [events, setEvents] = useState<CalendarSource[]>([]);
     const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
@@ -40,8 +39,29 @@ const Calendar: React.FC = () => {
     const calendarEvents = events
         .reduce((acc, source) => [...acc, ...source.events], [] as CalendarEvent[]);
 
+    const handleEventClick = (clickInfo: EventClickArg) => {
+        // Subtract one day from the end date
+        const endDate = new Date(clickInfo.event.endStr);
+        endDate.setDate(endDate.getDate() - 1);
+        const adjustedEndStr = endDate.toISOString().split('T')[0];
+
+        const eventId = clickInfo.event.id;
+        const event = calendarEvents.find(event => event.id === eventId);
+
+        console.log(event);
+
+        if (event) {
+            setSelectedEvent(event);
+        }
+    };
+
     return (
         <div style={{ padding: '20px', backgroundColor: '#f5f5f5' }}>
+            <EventModal
+                open={!!selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+                event={selectedEvent}
+            />
             <FullCalendar
                 plugins={[dayGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
@@ -55,7 +75,7 @@ const Calendar: React.FC = () => {
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 }}
                 // This disables the "more" link and shows all events in the day cell
-                dayMaxEvents={true}
+                dayMaxEvents={7}
             />
 
             {/* Legend */}

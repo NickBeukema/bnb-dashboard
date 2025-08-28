@@ -8,7 +8,8 @@ const BESTIE_ICAL_URL = process.env.BESTIE_ICAL_URL || "";
 
 const fetchIcal = async (
   url: string,
-  color: string
+  color: string,
+  location: string
 ): Promise<CalendarEvent[]> => {
   // Fetch the iCal data from the URL.
   const response = await fetch(url, {
@@ -37,13 +38,13 @@ const fetchIcal = async (
       // We perform a type assertion here because we've already filtered for 'VEVENT'
       const vevent = event as ical.VEvent;
       return {
-        uid: vevent.uid,
+        id: vevent.uid,
         title: vevent.summary,
         start: new Date(
           vevent.start.getTime() + 11 * 60 * 60 * 1000
         ).toISOString(),
-        end: new Date(vevent.end.getTime() + 11 * 60 * 60 * 1000).toISOString(),
-        location: vevent.location || null,
+        end: new Date(vevent.end.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        location: location,
         description: vevent.description || null,
         backgroundColor: color,
         allDay: true,
@@ -54,7 +55,7 @@ const fetchIcal = async (
 };
 
 export type CalendarEvent = {
-  uid: string;
+  id: string;
   title: string;
   start: string;
   end: string;
@@ -86,10 +87,14 @@ export async function GET(request: Request) {
   // but for same-origin requests, this is straightforward.
 
   try {
-    const wavesongEvents = await fetchIcal(WAVESONG_ICAL_URL, BLUE);
-    const redEvents = await fetchIcal(RED_ICAL_URL, RED);
-    const lakeBreezeEvents = await fetchIcal(LAKE_BREEZE_ICAL_URL, GREEN);
-    const bestieEvents = await fetchIcal(BESTIE_ICAL_URL, BROWN);
+    const wavesongEvents = await fetchIcal(WAVESONG_ICAL_URL, BLUE, "Wavesong");
+    const redEvents = await fetchIcal(RED_ICAL_URL, RED, "Red");
+    const lakeBreezeEvents = await fetchIcal(
+      LAKE_BREEZE_ICAL_URL,
+      GREEN,
+      "Lake Breeze"
+    );
+    const bestieEvents = await fetchIcal(BESTIE_ICAL_URL, BROWN, "Bestie");
 
     const formattedEvents = [
       {
