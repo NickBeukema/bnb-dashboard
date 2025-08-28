@@ -7,6 +7,7 @@ import { EventClickArg } from '@fullcalendar/core';
 import { useEffect, useState } from 'react';
 import { CalendarEvent, CalendarSource } from '@/app/api/calendar/route';
 import EventModal from './EventModal';
+import multiMonthPlugin from '@fullcalendar/multimonth'
 
 const Calendar: React.FC = () => {
 
@@ -73,7 +74,7 @@ const Calendar: React.FC = () => {
                 event={selectedEvent}
             />
             <FullCalendar
-                plugins={[dayGridPlugin, interactionPlugin]}
+                plugins={[dayGridPlugin, interactionPlugin, multiMonthPlugin]}
                 initialView="dayGridMonth"
                 displayEventTime={true}
                 weekends={true}
@@ -83,7 +84,7 @@ const Calendar: React.FC = () => {
                 headerToolbar={{
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: 'dayGridMonth,multiMonthYear'
                 }}
                 // This disables the "more" link and shows all events in the day cell
                 dayMaxEvents={7}
