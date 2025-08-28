@@ -33,3 +33,7 @@ a {
     color-scheme: dark;
   }
 }
+
+.fc-day-today {
+  background-color: yellow !important;
+}

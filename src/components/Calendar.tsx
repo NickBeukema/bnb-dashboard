@@ -56,7 +56,7 @@ const Calendar: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px', backgroundColor: '#f5f5f5' }}>
+        <div style={{ padding: '20px', backgroundColor: '#f5f5f5', height: 'calc(100% - 40px)' }}>
             <EventModal
                 open={!!selectedEvent}
                 onClose={() => setSelectedEvent(null)}
@@ -68,6 +68,7 @@ const Calendar: React.FC = () => {
                 displayEventTime={true}
                 weekends={true}
                 events={calendarEvents}
+                height="99%"
                 eventClick={handleEventClick}
                 headerToolbar={{
                     left: 'prev,next today',
