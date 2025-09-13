@@ -1,3 +1,5 @@
+"use client";
+
 import FullPage from "@/components/FullPage";
 import styles from "./page.module.css";
 
