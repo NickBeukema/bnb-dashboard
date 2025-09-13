@@ -1,5 +1,7 @@
 import { Paper, Typography, Card, CardContent, Chip, Box } from "@mui/material";
+import { BLUE, BROWN, GREEN, RED } from "@/app/lib/data";
 import { Task } from "@/app/api/calendar/route";
+
 import Markdown from "react-markdown";
 
 export default function TaskList({ tasks }: { tasks: Task[] }) {
@@ -16,6 +18,19 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
             timeZone: 'UTC'
         });
     };
+
+    const chipColor = (label: string) => {
+        switch (label) {
+            case 'Wavesong':
+                return BLUE;
+            case 'Red':
+                return RED;
+            case 'Lake Breeze':
+                return GREEN;
+            case 'Bestie':
+                return BROWN;
+        }
+    }
 
     return (
         <Paper elevation={3} sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
@@ -35,7 +50,7 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
                                             size="small"
                                             color="primary"
                                             variant="outlined"
-                                            sx={{ height: 20, fontSize: '0.7rem' }}
+                                            sx={{ height: 20, fontSize: '0.7rem', backgroundColor: chipColor(task.labels[0]), color: 'white' }}
                                         />
                                     )}
                                 </Box>

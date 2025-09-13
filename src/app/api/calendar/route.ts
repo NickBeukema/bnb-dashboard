@@ -1,3 +1,4 @@
+import { BLUE, RED, GREEN, BROWN } from "@/app/lib/data";
 import {
   GetCompletedTasksResponse,
   GetTasksResponse,
@@ -164,11 +165,6 @@ export type CalendarSource = {
   events: CalendarEvent[];
   color: string;
 };
-
-const BLUE = "#1e56b0";
-const RED = "#ff0000";
-const GREEN = "#21a677";
-const BROWN = "#4a120c";
 
 /**
  * Handles GET requests to /api/calendar.
