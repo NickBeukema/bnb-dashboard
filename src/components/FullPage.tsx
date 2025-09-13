@@ -2,6 +2,7 @@
 
 import Calendar from './Calendar';
 import { Container, Grid, Paper, Typography } from '@mui/material';
+import TaskList from './TaskList';
 
 export default function FullPage() {
     return (
@@ -16,15 +17,7 @@ export default function FullPage() {
 
                 {/* Task list section (bottom) */}
                 <Grid size={12} sx={{ height: '17%' }}>
-                    <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                        <Typography variant="h6" gutterBottom>
-                            Task List
-                        </Typography>
-                        {/* Your task list component or content will go here */}
-                        <Typography variant="body2" color="text.secondary">
-                            Add your tasks and activities here.
-                        </Typography>
-                    </Paper>
+                    <TaskList />
                 </Grid>
             </Grid>
         </Container>

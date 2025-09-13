@@ -34,7 +34,6 @@ const fetchIcal = async (
   const formattedEvents: CalendarEvent[] = Object.values(events)
     .filter((event) => event.type === "VEVENT")
     .map((event) => {
-      console.log(event);
       // We perform a type assertion here because we've already filtered for 'VEVENT'
       const vevent = event as ical.VEvent;
       return {
