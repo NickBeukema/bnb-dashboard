@@ -1,23 +1,8 @@
-import { Paper, Typography, Card, CardContent, Chip, Box, Divider } from "@mui/material";
-import { useEffect, useState } from "react";
-import { Task } from "@/app/api/tasks/route";
+import { Paper, Typography, Card, CardContent, Chip, Box } from "@mui/material";
+import { Task } from "@/app/api/calendar/route";
 import Markdown from "react-markdown";
 
-export default function TaskList() {
-
-    const [tasks, setTasks] = useState<Task[]>([]);
-
-    const fetchTasks = () => {
-        fetch('/api/tasks')
-            .then(response => response.json())
-            .then(data => {
-                setTasks(data);
-            });
-    };
-
-    useEffect(() => {
-        fetchTasks();
-    }, []);
+export default function TaskList({ tasks }: { tasks: Task[] }) {
 
     const formatDate = (dateString: string) => {
         if (!dateString) return 'No due date';

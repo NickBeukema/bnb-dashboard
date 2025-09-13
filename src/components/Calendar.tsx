@@ -9,34 +9,11 @@ import { CalendarEvent, CalendarSource } from '@/app/api/calendar/route';
 import EventModal from './EventModal';
 import multiMonthPlugin from '@fullcalendar/multimonth'
 
-const Calendar: React.FC = () => {
+const Calendar: React.FC<{ events: CalendarSource[], lastRefresh: Date | null }> = ({ events, lastRefresh }) => {
 
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-
-    const [events, setEvents] = useState<CalendarSource[]>([]);
-    const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
-    const fetchEvents = () => {
-        fetch('/api/calendar')
-            .then(response => response.json())
-            .then(data => {
-                setEvents(data.events);
-                setLastRefresh(new Date());
-            })
-            .catch(error => console.error('Error fetching events:', error));
-    };
-
-    useEffect(() => {
-        // Fetch events immediately when component mounts
-        fetchEvents();
-
-        // Set up interval to refresh every hour (3600000 milliseconds)
-        const interval = setInterval(fetchEvents, 3600000);
-
-        // Clean up interval when component unmounts
-        return () => clearInterval(interval);
-    }, []);
 
     const calendarEvents = events
         .filter(source => !selectedLocation || source.name === selectedLocation)
