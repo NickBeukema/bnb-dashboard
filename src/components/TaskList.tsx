@@ -36,31 +36,40 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
 
     return (
         <Paper elevation={3} sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                {tasks.map((task, index) => (
-                    <Card key={task.id} variant="outlined" sx={{ py: 0 }}>
-                        <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
-                                <Markdown>{task.name}</Markdown>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {formatDate(task.dueDate)}
-                                    </Typography>
-                                    {task.labels && task.labels.length > 0 && (
-                                        <Chip
-                                            label={task.labels[0]}
-                                            size="small"
-                                            color="primary"
-                                            variant="outlined"
-                                            sx={{ height: 20, fontSize: '0.7rem', backgroundColor: chipColor(task.labels[0]), color: 'white' }}
-                                        />
-                                    )}
+            <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                Tasks
+            </Typography>
+            {tasks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    No tasks found
+                </Typography>
+            ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                    {tasks.map((task, index) => (
+                        <Card key={task.id} variant="outlined" sx={{ py: 0 }}>
+                            <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'space-between' }}>
+                                    <Markdown>{task.name}</Markdown>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {formatDate(task.dueDate)}
+                                        </Typography>
+                                        {task.labels && task.labels.length > 0 && (
+                                            <Chip
+                                                label={task.labels[0]}
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                sx={{ height: 20, fontSize: '0.7rem', backgroundColor: chipColor(task.labels[0]), color: 'white' }}
+                                            />
+                                        )}
+                                    </Box>
                                 </Box>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                ))}
-            </Box>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </Box>
+            )}
         </Paper>
     );
 }
