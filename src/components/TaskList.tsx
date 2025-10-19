@@ -27,6 +27,8 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
                 return RED;
             case 'Lake Breeze':
                 return GREEN;
+            case 'Betsie':
+            case 'Betsie Airbnb':
             case 'Bestie':
                 return BROWN;
         }

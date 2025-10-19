@@ -10,7 +10,8 @@ import * as ical from "node-ical";
 const WAVESONG_ICAL_URL = process.env.WAVESONG_ICAL_URL || "";
 const RED_ICAL_URL = process.env.RED_ICAL_URL || "";
 const LAKE_BREEZE_ICAL_URL = process.env.LAKE_BREEZE_ICAL_URL || "";
-const BESTIE_ICAL_URL = process.env.BESTIE_ICAL_URL || "";
+const BETSIE_ICAL_URL = process.env.BETSIE_ICAL_URL || "";
+const BETSIE_AIRBNB_ICAL_URL = process.env.BETSIE_AIRBNB_ICAL_URL || "";
 
 export type Task = {
   id: string;
@@ -216,10 +217,17 @@ export async function GET(request: Request) {
       incompleteTasks,
       completedTasks
     );
-    const bestieEvents = await fetchIcal(
-      BESTIE_ICAL_URL,
+    const betsieEvents = await fetchIcal(
+      BETSIE_ICAL_URL,
       BROWN,
-      "Bestie",
+      "Betsie",
+      incompleteTasks,
+      completedTasks
+    );
+    const betsieAirbnbEvents = await fetchIcal(
+      BETSIE_AIRBNB_ICAL_URL,
+      BROWN,
+      "Betsie Airbnb",
       incompleteTasks,
       completedTasks
     );
@@ -241,8 +249,13 @@ export async function GET(request: Request) {
         color: "#21a677",
       },
       {
-        name: "Bestie",
-        events: bestieEvents,
+        name: "Betsie",
+        events: betsieEvents,
+        color: "#4a120c",
+      },
+      {
+        name: "Betsie Airbnb",
+        events: betsieAirbnbEvents,
         color: "#4a120c",
       },
     ];
