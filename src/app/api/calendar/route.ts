@@ -63,8 +63,7 @@ const fetchIcal = async (
   url: string,
   color: string,
   location: string,
-  incompleteTasks: GetTasksResponse,
-  completedTasks: GetCompletedTasksResponse
+  existingTaskIds: string[]
 ): Promise<CalendarEvent[]> => {
   // Fetch the iCal data from the URL.
   const response = await fetch(url, {
@@ -120,12 +119,6 @@ const fetchIcal = async (
   const createTaskId = (eventId: string, taskType: string) =>
     `bnb-${eventId}-${taskType.toLowerCase().replace(/\s+/g, "-")}`;
 
-  const incompleteTaskIds = incompleteTasks.results.map(
-    (task) => task.description
-  );
-  const completedTaskIds = completedTasks.items.map((task) => task.description);
-  const fullTaskIds = [...incompleteTaskIds, ...completedTaskIds];
-
   const api = new TodoistApi(TODOIST_API_TOKEN!);
 
   for (const event of formattedEvents) {
@@ -149,7 +142,7 @@ const fetchIcal = async (
 
       const eventTaskId = createTaskId(event.id, taskType);
 
-      if (fullTaskIds.includes(eventTaskId)) {
+      if (existingTaskIds.includes(eventTaskId)) {
         console.log(`Task already exists: ${eventTaskId}`);
         continue;
       }
@@ -170,12 +163,24 @@ const fetchIcal = async (
         }
       };
 
-      await api.addTask({
-        content: `${taskType} (${event.title})`,
-        description: eventTaskId,
-        dueDate: getDueDate(event, taskType).toISOString(),
-        labels: [location],
-      });
+      console.log("Adding Task: ", `${taskType} (${event.title})`, eventTaskId);
+
+      const dueDate = getDueDate(event, taskType);
+      if (!isWithinInterval(dueDate, { start: startDate, end: endDate })) {
+        console.log("Due date is beyond the date range, skipping", dueDate);
+        continue;
+      }
+
+      try {
+        await api.addTask({
+          content: `${taskType} (${event.title})`,
+          description: eventTaskId,
+          dueDate: getDueDate(event, taskType).toISOString(),
+          labels: [location],
+        });
+      } catch (error) {
+        console.error("Error adding task:", error.responseData);
+      }
 
       console.log("--------------------------------");
       console.log(`Event: ${event.title} (${event.id})`);
@@ -188,6 +193,41 @@ const fetchIcal = async (
   }
 
   return formattedEvents;
+};
+
+const getExistingTaskIds = async (): Promise<string[]> => {
+  const api = new TodoistApi(TODOIST_API_TOKEN!);
+
+  // Set up date range for task filtering (5 days back, 1 month ahead)
+  const taskStartDate = subDays(new Date(), 5);
+
+  // Fetch tasks for the next 3 days after the end of the date range
+  // due to tasks being created 2 days after the event ends
+  const taskEndDate = addDays(new Date(), DATE_RANGE_MONTHS * 30 + 3);
+
+  // Create more readable filter query
+  const filterQuery = `date after: ${format(
+    taskStartDate,
+    "M/d/yyyy"
+  )} & date before: ${format(taskEndDate, "M/d/yyyy")}`;
+  console.log(`Todoist filter query: ${filterQuery}`);
+
+  // Fetch tasks from Todoist with error handling
+  const incompleteTasks: GetTasksResponse = await api.getTasksByFilter({
+    query: filterQuery,
+  });
+  const completedTasks: GetCompletedTasksResponse =
+    await api.getCompletedTasksByDueDate({
+      since: taskStartDate.toISOString(),
+      until: taskEndDate.toISOString(),
+    });
+
+  const incompleteTaskIds = incompleteTasks.results.map(
+    (task) => task.description
+  );
+  const completedTaskIds = completedTasks.items.map((task) => task.description);
+  const existingTaskIds = [...incompleteTaskIds, ...completedTaskIds];
+  return existingTaskIds;
 };
 
 export type CalendarEvent = {
@@ -218,93 +258,39 @@ export async function GET(request: Request) {
     // Validate environment variables first
     validateEnvironmentVariables();
 
-    // Set up date range for task filtering (5 days back, 1 month ahead)
-    const taskStartDate = subDays(new Date(), 5);
-
-    // Fetch tasks for the next 3 days after the end of the date range
-    // due to tasks being created 2 days after the event ends
-    const taskEndDate = addDays(new Date(), DATE_RANGE_MONTHS * 30 + 3);
-
-    const api = new TodoistApi(TODOIST_API_TOKEN!);
-
-    // Create more readable filter query
-    const filterQuery = `date after: ${format(
-      taskStartDate,
-      "M/d/yyyy"
-    )} & date before: ${format(taskEndDate, "M/d/yyyy")}`;
-    console.log(`Todoist filter query: ${filterQuery}`);
-
-    // Fetch tasks from Todoist with error handling
-    let incompleteTasks: GetTasksResponse;
-    let completedTasks: GetCompletedTasksResponse;
-
-    try {
-      [incompleteTasks, completedTasks] = await Promise.all([
-        api.getTasksByFilter({ query: filterQuery }),
-        api.getCompletedTasksByDueDate({
-          since: taskStartDate.toISOString(),
-          until: taskEndDate.toISOString(),
-        }),
-      ]);
-    } catch (error) {
-      console.error("Error fetching tasks from Todoist:", error);
-      // Continue without tasks if Todoist is unavailable
-      incompleteTasks = { results: [], nextCursor: null };
-      completedTasks = { items: [], nextCursor: null };
-    }
+    const existingTaskIds = await getExistingTaskIds();
 
     // Fetch events from all iCal sources with error handling
-    const eventPromises = [
-      fetchIcal(
-        WAVESONG_ICAL_URL!,
-        BLUE,
-        "Wavesong",
-        incompleteTasks,
-        completedTasks
-      ),
-      fetchIcal(RED_ICAL_URL!, RED, "Red", incompleteTasks, completedTasks),
-      fetchIcal(
-        LAKE_BREEZE_ICAL_URL!,
-        GREEN,
-        "Lake Breeze",
-        incompleteTasks,
-        completedTasks
-      ),
-      fetchIcal(
-        BETSIE_ICAL_URL!,
-        BROWN,
-        "Betsie",
-        incompleteTasks,
-        completedTasks
-      ),
-      fetchIcal(
-        BETSIE_AIRBNB_ICAL_URL!,
-        BROWN,
-        "Betsie Airbnb",
-        incompleteTasks,
-        completedTasks
-      ),
-    ];
-
-    const eventResults = await Promise.allSettled(eventPromises);
-
-    // Process results, handling individual failures gracefully
-    const [
-      wavesongEvents,
-      redEvents,
-      lakeBreezeEvents,
-      betsieEvents,
-      betsieAirbnbEvents,
-    ] = eventResults.map((result, index) => {
-      if (result.status === "rejected") {
-        console.error(
-          `Error fetching events for property ${index + 1}:`,
-          result.reason
-        );
-        return [];
-      }
-      return result.value;
-    });
+    const wavesongEvents = await fetchIcal(
+      WAVESONG_ICAL_URL!,
+      BLUE,
+      "Wavesong",
+      existingTaskIds
+    );
+    const redEvents = await fetchIcal(
+      RED_ICAL_URL!,
+      RED,
+      "Red",
+      existingTaskIds
+    );
+    const lakeBreezeEvents = await fetchIcal(
+      LAKE_BREEZE_ICAL_URL!,
+      GREEN,
+      "Lake Breeze",
+      existingTaskIds
+    );
+    const betsieEvents = await fetchIcal(
+      BETSIE_ICAL_URL!,
+      BROWN,
+      "Betsie",
+      existingTaskIds
+    );
+    const betsieAirbnbEvents = await fetchIcal(
+      BETSIE_AIRBNB_ICAL_URL!,
+      BROWN,
+      "Betsie Airbnb",
+      existingTaskIds
+    );
 
     const formattedEvents: CalendarSource[] = [
       {
@@ -334,10 +320,13 @@ export async function GET(request: Request) {
       },
     ];
 
+    const api = new TodoistApi(TODOIST_API_TOKEN!);
     // Fetch all tasks for display
     let formattedTasks: Task[] = [];
     try {
-      const tasks = await api.getTasks();
+      const tasks = await api.getTasks({
+        limit: 200,
+      });
       formattedTasks = tasks.results
         .map((task) => ({
           id: task.id,
@@ -353,7 +342,8 @@ export async function GET(request: Request) {
             new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
         );
     } catch (error) {
-      console.error("Error fetching all tasks:", error);
+      // @ts-ignore
+      console.error("Error fetching all tasks:", error.responseData);
       // Continue with empty tasks array if this fails
     }
 
