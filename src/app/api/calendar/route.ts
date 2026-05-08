@@ -1,4 +1,4 @@
-import { BLUE, RED, GREEN, BROWN } from "@/app/lib/data";
+import { BLUE, RED, GREEN, BROWN, GOLD } from "@/app/lib/data";
 import {
   GetCompletedTasksResponse,
   GetTasksResponse,
@@ -16,12 +16,14 @@ import {
 } from "date-fns";
 
 // Environment variable validation
+const TODOIST_API_TOKEN = process.env.TODOIST_API_TOKEN;
+
 const WAVESONG_ICAL_URL = process.env.WAVESONG_ICAL_URL;
 const RED_ICAL_URL = process.env.RED_ICAL_URL;
 const LAKE_BREEZE_ICAL_URL = process.env.LAKE_BREEZE_ICAL_URL;
 const BETSIE_ICAL_URL = process.env.BETSIE_ICAL_URL;
 const BETSIE_AIRBNB_ICAL_URL = process.env.BETSIE_AIRBNB_ICAL_URL;
-const TODOIST_API_TOKEN = process.env.TODOIST_API_TOKEN;
+const NAUTICAL_NEST_ICAL_URL = process.env.NAUTICAL_NEST_ICAL_URL;
 
 // Validate required environment variables
 const validateEnvironmentVariables = () => {
@@ -31,6 +33,7 @@ const validateEnvironmentVariables = () => {
     { name: "LAKE_BREEZE_ICAL_URL", value: LAKE_BREEZE_ICAL_URL },
     { name: "BETSIE_ICAL_URL", value: BETSIE_ICAL_URL },
     { name: "BETSIE_AIRBNB_ICAL_URL", value: BETSIE_AIRBNB_ICAL_URL },
+    { name: "NAUTICAL_NEST_ICAL_URL", value: NAUTICAL_NEST_ICAL_URL },
     { name: "TODOIST_API_TOKEN", value: TODOIST_API_TOKEN },
   ];
 
@@ -40,7 +43,7 @@ const validateEnvironmentVariables = () => {
     throw new Error(
       `Missing required environment variables: ${missingVars
         .map((v) => v.name)
-        .join(", ")}`
+        .join(", ")}`,
     );
   }
 };
@@ -63,7 +66,7 @@ const fetchIcal = async (
   url: string,
   color: string,
   location: string,
-  existingTaskIds: string[]
+  existingTaskIds: string[],
 ): Promise<CalendarEvent[]> => {
   // Fetch the iCal data from the URL.
   const response = await fetch(url, {
@@ -96,7 +99,7 @@ const fetchIcal = async (
         id: vevent.uid,
         title: vevent.summary,
         start: new Date(
-          vevent.start.getTime() + 11 * 60 * 60 * 1000
+          vevent.start.getTime() + 11 * 60 * 60 * 1000,
         ).toISOString(),
         end: new Date(vevent.end.getTime() + 24 * 60 * 60 * 1000).toISOString(),
         location: location,
@@ -136,7 +139,11 @@ const fetchIcal = async (
       "Make Door Code",
     ]) {
       // Skip Make Door Code task for non-Lake Breeze locations
-      if (taskType === "Make Door Code" && location !== "Lake Breeze") {
+      const doorCodeLocations = ["Nautical Nest", "Lake Breeze", "Wavesong"];
+      if (
+        taskType === "Make Door Code" &&
+        !doorCodeLocations.includes(location)
+      ) {
         continue;
       }
 
@@ -208,7 +215,7 @@ const getExistingTaskIds = async (): Promise<string[]> => {
   // Create more readable filter query
   const filterQuery = `date after: ${format(
     taskStartDate,
-    "M/d/yyyy"
+    "M/d/yyyy",
   )} & date before: ${format(taskEndDate, "M/d/yyyy")}`;
   console.log(`Todoist filter query: ${filterQuery}`);
 
@@ -223,7 +230,7 @@ const getExistingTaskIds = async (): Promise<string[]> => {
     });
 
   const incompleteTaskIds = incompleteTasks.results.map(
-    (task) => task.description
+    (task) => task.description,
   );
   const completedTaskIds = completedTasks.items.map((task) => task.description);
   const existingTaskIds = [...incompleteTaskIds, ...completedTaskIds];
@@ -265,31 +272,37 @@ export async function GET(request: Request) {
       WAVESONG_ICAL_URL!,
       BLUE,
       "Wavesong",
-      existingTaskIds
+      existingTaskIds,
     );
     const redEvents = await fetchIcal(
       RED_ICAL_URL!,
       RED,
       "Red",
-      existingTaskIds
+      existingTaskIds,
     );
     const lakeBreezeEvents = await fetchIcal(
       LAKE_BREEZE_ICAL_URL!,
       GREEN,
       "Lake Breeze",
-      existingTaskIds
+      existingTaskIds,
     );
     const betsieEvents = await fetchIcal(
       BETSIE_ICAL_URL!,
       BROWN,
       "Betsie",
-      existingTaskIds
+      existingTaskIds,
     );
     const betsieAirbnbEvents = await fetchIcal(
       BETSIE_AIRBNB_ICAL_URL!,
       BROWN,
       "Betsie Airbnb",
-      existingTaskIds
+      existingTaskIds,
+    );
+    const nauticalNestEvents = await fetchIcal(
+      NAUTICAL_NEST_ICAL_URL!,
+      GOLD,
+      "Nautical Nest",
+      existingTaskIds,
     );
 
     const formattedEvents: CalendarSource[] = [
@@ -318,6 +331,11 @@ export async function GET(request: Request) {
         events: betsieAirbnbEvents,
         color: "#4a120c",
       },
+      {
+        name: "Nautical Nest",
+        events: nauticalNestEvents,
+        color: "#ffd700",
+      },
     ];
 
     const api = new TodoistApi(TODOIST_API_TOKEN!);
@@ -339,7 +357,7 @@ export async function GET(request: Request) {
         }))
         .sort(
           (a, b) =>
-            new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
         );
     } catch (error) {
       // @ts-ignore
@@ -354,7 +372,7 @@ export async function GET(request: Request) {
         tasks: formattedTasks,
         lastUpdated: new Date().toISOString(),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     // Handle any unexpected errors during the process
@@ -369,7 +387,7 @@ export async function GET(request: Request) {
         events: [],
         tasks: [],
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
