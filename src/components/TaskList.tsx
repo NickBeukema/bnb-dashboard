@@ -1,5 +1,5 @@
 import { Paper, Typography, Card, CardContent, Chip, Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import { BLUE, BROWN, GREEN, RED } from "@/app/lib/data";
+import { BLUE, BROWN, GOLD, GREEN, RED } from "@/app/lib/data";
 import { Task } from "@/app/api/calendar/route";
 
 import Markdown from "react-markdown";
@@ -28,18 +28,22 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
         });
     };
 
-    const chipColor = (label: string) => {
+    const chipColors = (label: string): { bg?: string; fg: string } => {
         switch (label) {
             case 'Wavesong':
-                return BLUE;
+                return { bg: BLUE, fg: 'white' };
             case 'Red':
-                return RED;
+                return { bg: RED, fg: 'white' };
             case 'Lake Breeze':
-                return GREEN;
+                return { bg: GREEN, fg: 'white' };
             case 'Betsie':
             case 'Betsie Airbnb':
             case 'Bestie':
-                return BROWN;
+                return { bg: BROWN, fg: 'white' };
+            case 'Nautical Nest':
+                return { bg: GOLD, fg: 'black' };
+            default:
+                return { fg: 'white' };
         }
     }
 
@@ -166,15 +170,18 @@ export default function TaskList({ tasks }: { tasks: Task[] }) {
                                         <Typography variant="caption" color="text.secondary">
                                             {formatDate(task.dueDate)}
                                         </Typography>
-                                        {task.labels && task.labels.length > 0 && (
-                                            <Chip
-                                                label={task.labels[0]}
-                                                size="small"
-                                                color="primary"
-                                                variant="outlined"
-                                                sx={{ height: 20, fontSize: '0.7rem', backgroundColor: chipColor(task.labels[0]), color: 'white' }}
-                                            />
-                                        )}
+                                        {task.labels && task.labels.length > 0 && (() => {
+                                            const colors = chipColors(task.labels[0]);
+                                            return (
+                                                <Chip
+                                                    label={task.labels[0]}
+                                                    size="small"
+                                                    color="primary"
+                                                    variant="outlined"
+                                                    sx={{ height: 20, fontSize: '0.7rem', backgroundColor: colors.bg, color: colors.fg }}
+                                                />
+                                            );
+                                        })()}
                                         <Tooltip title="Delete task">
                                             <IconButton size="small" onClick={() => requestDelete(task.id)} aria-label="delete-task">
                                                 ✕
