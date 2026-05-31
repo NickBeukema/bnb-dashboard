@@ -4,8 +4,8 @@ import { TodoistApi } from "@doist/todoist-api-typescript";
 const TODOIST_API_TOKEN = process.env.TODOIST_API_TOKEN;
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: taskId } = await params;
   if (!taskId) {
