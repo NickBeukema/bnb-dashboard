@@ -61,6 +61,9 @@ interface PropertyConfig {
   name: string;
   url: string;
   color: string;
+  // Override FullCalendar's default event text color when the background is too
+  // light for white text (e.g. Nautical Nest's gold).
+  textColor?: string;
 }
 
 const PROPERTIES: PropertyConfig[] = [
@@ -69,7 +72,12 @@ const PROPERTIES: PropertyConfig[] = [
   { name: "Lake Breeze", url: LAKE_BREEZE_ICAL_URL!, color: GREEN },
   { name: "Betsie", url: BETSIE_ICAL_URL!, color: BROWN },
   { name: "Betsie Airbnb", url: BETSIE_AIRBNB_ICAL_URL!, color: BROWN },
-  { name: "Nautical Nest", url: NAUTICAL_NEST_ICAL_URL!, color: GOLD },
+  {
+    name: "Nautical Nest",
+    url: NAUTICAL_NEST_ICAL_URL!,
+    color: GOLD,
+    textColor: "black",
+  },
 ];
 
 /**
@@ -83,6 +91,7 @@ const parseIcalEvents = async (
   url: string,
   color: string,
   location: string,
+  textColor?: string,
 ): Promise<CalendarEvent[]> => {
   const response = await fetch(url, {
     // Next.js fetch cache: hold each feed for an hour to match the dashboard's
@@ -111,6 +120,7 @@ const parseIcalEvents = async (
         location,
         description: vevent.description || null,
         backgroundColor: color,
+        textColor,
         allDay: true,
       };
     });
@@ -157,7 +167,7 @@ export async function GET() {
     // Always fetch event sources — this drives the calendar display and is
     // independent of any Todoist writes. Run in parallel since Next caches each.
     const eventResults = await Promise.allSettled(
-      PROPERTIES.map((p) => parseIcalEvents(p.url, p.color, p.name)),
+      PROPERTIES.map((p) => parseIcalEvents(p.url, p.color, p.name, p.textColor)),
     );
     const eventsByProperty = eventResults.map((result, index) => {
       if (result.status === "rejected") {

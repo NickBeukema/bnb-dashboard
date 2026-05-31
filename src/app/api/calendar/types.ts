@@ -16,6 +16,7 @@ export type CalendarEvent = {
   location: string | null;
   description?: string | null;
   backgroundColor: string;
+  textColor?: string;
   allDay: boolean;
 };
 
