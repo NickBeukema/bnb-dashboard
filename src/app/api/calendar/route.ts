@@ -3,7 +3,7 @@ import {
   GetCompletedTasksResponse,
   GetTasksResponse,
   TodoistApi,
-} from "@doist/todoist-api-typescript";
+} from "@doist/todoist-sdk";
 import { NextResponse } from "next/server";
 import * as ical from "node-ical";
 import {
@@ -62,6 +62,10 @@ export type Task = {
   labels: string[];
 };
 
+// node-ical returns `{ val, params }` instead of a string when a property has parameters
+const paramText = (value: ical.ParameterValue): string =>
+  typeof value === "string" ? value : value.val;
+
 const fetchIcal = async (
   url: string,
   color: string,
@@ -89,21 +93,22 @@ const fetchIcal = async (
 
   // Filter out non-event components and format the data for a clean API response.
   const formattedEvents: CalendarEvent[] = Object.values(events)
-    .filter((event) => event.type === "VEVENT")
+    .filter((event) => event?.type === "VEVENT")
     .map((event) => {
       // We perform a type assertion here because we've already filtered for 'VEVENT'
       const vevent = event as ical.VEvent;
+      const end = vevent.end ?? vevent.start;
 
       // PRESERVE the exact date adjustments that work for calendar display
       return {
         id: vevent.uid,
-        title: vevent.summary,
+        title: paramText(vevent.summary),
         start: new Date(
           vevent.start.getTime() + 11 * 60 * 60 * 1000,
         ).toISOString(),
-        end: new Date(vevent.end.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        end: new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString(),
         location: location,
-        description: vevent.description || null,
+        description: vevent.description ? paramText(vevent.description) : null,
         backgroundColor: color,
         allDay: true,
       };
@@ -187,6 +192,7 @@ const fetchIcal = async (
         });
         existingTaskIds.push(eventTaskId);
       } catch (error) {
+        // @ts-ignore
         console.error("Error adding task:", error.responseData);
       }
 

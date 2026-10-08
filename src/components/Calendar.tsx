@@ -1,13 +1,17 @@
 "use client";
 
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import { EventClickArg } from '@fullcalendar/core';
+import 'temporal-polyfill/global';
+import FullCalendar, { EventClickInfo as EventClickArg } from '@fullcalendar/react';
+import classicThemePlugin from '@fullcalendar/react/themes/classic';
+import dayGridPlugin from '@fullcalendar/react/daygrid';
+import interactionPlugin from '@fullcalendar/react/interaction';
+import multiMonthPlugin from '@fullcalendar/react/multimonth';
+import '@fullcalendar/react/skeleton.css';
+import '@fullcalendar/react/themes/classic/theme.css';
+import '@fullcalendar/react/themes/classic/palette.css';
 import { useEffect, useState } from 'react';
 import { CalendarEvent, CalendarSource } from '@/app/api/calendar/route';
 import EventModal from './EventModal';
-import multiMonthPlugin from '@fullcalendar/multimonth'
 
 const Calendar: React.FC<{ events: CalendarSource[], lastRefresh: Date | null }> = ({ events, lastRefresh }) => {
 
@@ -51,11 +55,11 @@ const Calendar: React.FC<{ events: CalendarSource[], lastRefresh: Date | null }>
                 event={selectedEvent}
             />
             <FullCalendar
-                plugins={[dayGridPlugin, interactionPlugin, multiMonthPlugin]}
+                plugins={[classicThemePlugin, dayGridPlugin, interactionPlugin, multiMonthPlugin]}
                 initialView="dayGridMonth"
                 displayEventTime={true}
                 weekends={true}
-                events={calendarEvents}
+                events={calendarEvents.map(e => ({ ...e, color: e.backgroundColor }))}
                 height="99%"
                 eventClick={handleEventClick}
                 headerToolbar={{
