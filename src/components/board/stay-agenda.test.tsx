@@ -39,10 +39,8 @@ describe("StayAgenda", () => {
     ).toEqual(["Leaving today", "Soon", "Day 30"]);
   });
 
-  it("leaves out owner blocks", () => {
-    renderAgenda([
-      makeStay({ guest: "Blocked", blocked: true, checkIn: day(9), checkOut: day(10) }),
-    ]);
+  it("leaves out seasonal closures", () => {
+    renderAgenda([makeStay({ guest: "Closed", closed: true, checkIn: day(9), checkOut: day(10) })]);
     expect(rows()).toHaveLength(0);
   });
 

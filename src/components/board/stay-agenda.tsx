@@ -27,7 +27,7 @@ export function StayAgenda({
   className?: string;
 }) {
   const horizon = addDays(today, DAYS_AHEAD);
-  const upcoming = stays.filter((s) => !s.blocked && s.checkOut >= today && s.checkIn <= horizon);
+  const upcoming = stays.filter((s) => !s.closed && s.checkOut >= today && s.checkIn <= horizon);
 
   return (
     <section aria-labelledby="agenda-title" className={cn("flex flex-col gap-3", className)}>

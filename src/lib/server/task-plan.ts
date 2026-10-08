@@ -7,7 +7,7 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
-import { type CalendarEvent, isBlocked } from "@/lib/calendar-types";
+import { type CalendarEvent, isClosure } from "@/lib/calendar-types";
 import type { PropertyConfig } from "@/lib/properties";
 
 /** How far ahead stays (and their tasks) are synced into Todoist */
@@ -59,7 +59,7 @@ export const syncWindow = (now: Date) => ({
 /**
  * Which tasks one property's events still need. Pure: `existing` holds the ids of every task
  * already in Todoist (open or completed), and nothing is created twice within one plan.
- * Owner blocks get no tasks.
+ * Private bookings (short owner blocks) get tasks like any stay; seasonal closures get none.
  */
 export function planTasks(
   events: CalendarEvent[],
@@ -72,7 +72,7 @@ export function planTasks(
   const tasks: NewTask[] = [];
 
   for (const event of events) {
-    if (isBlocked(event.title)) continue;
+    if (isClosure(event)) continue;
 
     for (const type of TASK_TYPES) {
       if (type.needsDoorCode && !property.doorCode) continue;

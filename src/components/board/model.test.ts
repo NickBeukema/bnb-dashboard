@@ -44,7 +44,7 @@ const task = (overrides: Partial<Task> & { id: string }): Task => ({
 const stay = (overrides: Partial<Stay> & { id: string }): Stay => ({
   property: propertyByName("Wavesong"),
   guest: "Jen",
-  blocked: false,
+  closed: false,
   checkIn: day(2026, 10, 9),
   checkOut: day(2026, 10, 12),
   nights: 3,
@@ -165,7 +165,7 @@ describe("toStays", () => {
     ]);
   });
 
-  it("detects owner blocks", () => {
+  it("shows short owner blocks as private bookings", () => {
     const stays = toStays([
       source("Wavesong", [
         apiEvent({ id: "1", title: "Blocked" }),
@@ -175,7 +175,43 @@ describe("toStays", () => {
         apiEvent({ id: "5", title: "Unblocked" }),
       ]),
     ]);
-    expect(stays.map((s) => s.blocked)).toEqual([true, true, true, false, false]);
+    expect(stays.map((s) => [s.guest, s.closed])).toEqual([
+      ["Private booking", false],
+      ["Private booking", false],
+      ["Private booking", false],
+      ["Blockedson", false],
+      ["Unblocked", false],
+    ]);
+  });
+
+  it("closes the property for owner blocks over two weeks", () => {
+    const stays = toStays([
+      source("Wavesong", [
+        apiEvent({ id: "14", title: "Blocked", checkIn: "2026-11-01", checkOut: "2026-11-15" }),
+        apiEvent({ id: "15", title: "Blocked", checkIn: "2026-11-01", checkOut: "2026-11-16" }),
+        apiEvent({ id: "guest", checkIn: "2026-11-01", checkOut: "2026-12-01" }),
+      ]),
+    ]);
+    expect(stays.map((s) => [s.id, s.guest, s.closed])).toEqual([
+      ["14", "Private booking", false],
+      ["15", "Closed", true],
+      ["guest", "Jen", false],
+    ]);
+  });
+
+  it("names a private booking's tasks after the booking", () => {
+    const [letter] = toTasks([
+      {
+        id: "t",
+        name: "Send Welcome Letter (Blocked)",
+        description: "bnb-b1-send-welcome-letter",
+        completed: false,
+        dueDate: "2026-10-09",
+        priority: 1,
+        labels: ["Wavesong"],
+      },
+    ]);
+    expect(letter.guest).toBe("Private booking");
   });
 
   it("sorts stays across sources by check-in", () => {
@@ -359,9 +395,9 @@ describe("movementsOn", () => {
     ]);
   });
 
-  it("ignores owner blocks", () => {
-    const blocked = stay({ id: "b", blocked: true, guest: "Blocked", checkIn: today });
-    expect(movementsOn(today, [blocked])).toEqual([]);
+  it("ignores seasonal closures", () => {
+    const closed = stay({ id: "b", closed: true, guest: "Closed", checkIn: today });
+    expect(movementsOn(today, [closed])).toEqual([]);
   });
 
   it("follows PROPERTIES order, not stay order", () => {
@@ -399,9 +435,9 @@ describe("stayOnNight", () => {
     expect(stayOnNight(wave, day(2026, 10, 8), [s])).toBeNull();
   });
 
-  it("excludes other properties and owner blocks", () => {
+  it("excludes other properties and seasonal closures", () => {
     expect(stayOnNight(PROPERTIES[1], day(2026, 10, 10), [s])).toBeNull();
-    const blocked = { ...s, blocked: true };
-    expect(stayOnNight(wave, day(2026, 10, 10), [blocked])).toBeNull();
+    const closed = { ...s, closed: true };
+    expect(stayOnNight(wave, day(2026, 10, 10), [closed])).toBeNull();
   });
 });

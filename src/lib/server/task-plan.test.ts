@@ -122,10 +122,25 @@ describe("planTasks", () => {
     ]);
   });
 
-  it("plans nothing for owner blocks", () => {
+  it("plans every task for private bookings (owner blocks of two weeks or less)", () => {
     const events = [
       stay("b1", "2026-10-12", "2026-10-15", "Blocked"),
-      stay("b2", "2026-10-12", "2026-10-15", "Airbnb (Not available)"),
+      stay("b2", "2026-10-12", "2026-10-26", "Airbnb (Not available)"),
+    ];
+    expect(planTasks(events, wavesong, new Set(), now).map((t) => t.description)).toEqual([
+      "bnb-b1-send-welcome-letter",
+      "bnb-b1-send-review-request",
+      "bnb-b1-make-door-code",
+      "bnb-b2-send-welcome-letter",
+      "bnb-b2-send-review-request",
+      "bnb-b2-make-door-code",
+    ]);
+  });
+
+  it("plans nothing for seasonal closures (owner blocks over two weeks)", () => {
+    const events = [
+      stay("c1", "2026-10-12", "2026-10-27", "Blocked"),
+      stay("c2", "2026-10-12", "2027-04-15", "Airbnb (Not available)"),
     ];
     expect(planTasks(events, wavesong, new Set(), now)).toEqual([]);
   });

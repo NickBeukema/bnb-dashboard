@@ -147,13 +147,19 @@ describe("StayCalendar", () => {
     expect(onSelectStay).toHaveBeenCalledExactlyOnceWith(stay);
   });
 
-  it("labels owner blocks as Blocked", () => {
+  it("hatches seasonal closures", () => {
     renderCalendar([
-      makeStay({ blocked: true, guest: "Not available", checkIn: day(13), checkOut: day(14) }),
+      makeStay({ closed: true, guest: "Closed", checkIn: day(13), checkOut: day(14) }),
     ]);
-    const bar = screen.getByRole("button", { name: "Blocked, Wavesong, Oct 13 to Oct 14" });
-    expect(bar).toHaveTextContent("Blocked");
+    const bar = screen.getByRole("button", { name: "Closed, Wavesong, Oct 13 to Oct 14" });
+    expect(bar).toHaveTextContent("Closed");
     expect(bar).toHaveClass("stripes");
+  });
+
+  it("shows private bookings like any stay", () => {
+    renderCalendar([makeStay({ guest: "Private booking", checkIn: day(13), checkOut: day(14) })]);
+    const bar = screen.getByRole("button", { name: "Private booking, Wavesong, Oct 13 to Oct 14" });
+    expect(bar).not.toHaveClass("stripes");
   });
 
   it("renders a skeleton", () => {

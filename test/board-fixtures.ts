@@ -20,7 +20,7 @@ export function makeStay(overrides: Partial<Stay> & { checkIn: Date; checkOut: D
     id: `stay-${seq}`,
     property: WAVESONG,
     guest: `Guest ${seq}`,
-    blocked: false,
+    closed: false,
     nights: Math.round((checkOut.getTime() - checkIn.getTime()) / 864e5),
     ...overrides,
   };

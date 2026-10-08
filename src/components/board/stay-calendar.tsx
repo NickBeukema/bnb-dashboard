@@ -238,7 +238,7 @@ function Bar({
   const to = endsHere ? outIndex + 0.5 : 7;
   if (to <= from) return null;
 
-  const label = `${stay.blocked ? "Blocked" : stay.guest}, ${stay.property.name}, ${format(stay.checkIn, "MMM d")} to ${format(stay.checkOut, "MMM d")}`;
+  const label = `${stay.guest}, ${stay.property.name}, ${format(stay.checkIn, "MMM d")} to ${format(stay.checkOut, "MMM d")}`;
 
   return (
     <button
@@ -252,7 +252,7 @@ function Bar({
       }}
       className={cn(
         "absolute inset-y-0.5 flex items-center overflow-hidden px-3 text-left text-sm font-semibold outline-none transition-[filter] duration-200 hover:brightness-110 focus-visible:ring-3 focus-visible:ring-ring active:brightness-95",
-        stay.blocked
+        stay.closed
           ? "stripes bg-card text-(--prop) ring-1 ring-(--prop)/50 ring-inset"
           : "bg-(--prop) text-(--prop-ink)",
         startsHere ? "rounded-l-full pl-3.5" : "rounded-l-none",
@@ -262,11 +262,11 @@ function Bar({
       <span
         className={cn(
           "truncate",
-          stay.blocked && "text-muted-foreground",
+          stay.closed && "text-muted-foreground",
           to - from < 1 && "sr-only",
         )}
       >
-        {stay.blocked ? "Blocked" : stay.guest}
+        {stay.guest}
       </span>
     </button>
   );

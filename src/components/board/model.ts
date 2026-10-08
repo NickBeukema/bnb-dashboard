@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { differenceInCalendarDays, isBefore, parseISO, startOfDay } from "date-fns";
-import { type CalendarSource, isBlocked, type Task } from "@/lib/calendar-types";
+import { type CalendarSource, isClosure, isOwnerBlock, type Task } from "@/lib/calendar-types";
 import { PROPERTY_CONFIG } from "@/lib/properties";
 
 export type Property = {
@@ -33,9 +33,10 @@ export const propertyStyle = (property: Property) =>
 export type Stay = {
   id: string;
   property: Property;
-  /** Guest name, or "Blocked" for owner blocks */
+  /** Guest name, "Private booking" for short owner blocks, or "Closed" for closures */
   guest: string;
-  blocked: boolean;
+  /** A seasonal closure: shown on the calendar, but not a stay */
+  closed: boolean;
   checkIn: Date;
   checkOut: Date;
   nights: number;
@@ -61,7 +62,10 @@ export type BoardData = {
   lastUpdated: Date;
 };
 
-const guestFromTitle = (title: string) => title.replace(/^reserved\s*-\s*/i, "").trim();
+const guestFromTitle = (title: string) =>
+  isOwnerBlock(title)
+    ? "Private booking"
+    : title.replace(/^reserved\s*-\s*/i, "").trim() || "Reserved";
 
 export function toStays(sources: CalendarSource[]): Stay[] {
   return sources
@@ -70,12 +74,12 @@ export function toStays(sources: CalendarSource[]): Stay[] {
         // `yyyy-MM-dd` parses as local midnight
         const checkIn = parseISO(event.checkIn);
         const checkOut = parseISO(event.checkOut);
-        const guest = guestFromTitle(event.title);
+        const closed = isClosure(event);
         return {
           id: event.id,
           property: propertyByName(source.name),
-          guest: guest || "Reserved",
-          blocked: isBlocked(event.title),
+          guest: closed ? "Closed" : guestFromTitle(event.title),
+          closed,
           checkIn,
           checkOut,
           nights: differenceInCalendarDays(checkOut, checkIn),
@@ -134,7 +138,7 @@ export type Turnover = {
 
 export function movementsOn(day: Date, stays: Stay[]): Turnover[] {
   return PROPERTIES.flatMap((property) => {
-    const own = stays.filter((s) => s.property.name === property.name && !s.blocked);
+    const own = stays.filter((s) => s.property.name === property.name && !s.closed);
     const out = own.find((s) => differenceInCalendarDays(s.checkOut, day) === 0) ?? null;
     const arriving = own.find((s) => differenceInCalendarDays(s.checkIn, day) === 0) ?? null;
     return out || arriving ? [{ property, out, in: arriving }] : [];
@@ -146,7 +150,7 @@ export const stayOnNight = (property: Property, day: Date, stays: Stay[]) =>
   stays.find(
     (s) =>
       s.property.name === property.name &&
-      !s.blocked &&
+      !s.closed &&
       differenceInCalendarDays(day, s.checkIn) >= 0 &&
       differenceInCalendarDays(s.checkOut, day) > 0,
   ) ?? null;

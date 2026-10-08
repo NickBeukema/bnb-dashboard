@@ -105,12 +105,12 @@ describe("Runway", () => {
     expect(names).toEqual(["Joseph leaves", "Michelle arrives"]);
   });
 
-  it("leaves blocked dates out of the movements", () => {
+  it("leaves seasonal closures out of the movements", () => {
     renderRunway([
       makeStay({
         property: WAVESONG,
-        blocked: true,
-        guest: "Blocked",
+        closed: true,
+        guest: "Closed",
         checkIn: today,
         checkOut: day(9),
       }),

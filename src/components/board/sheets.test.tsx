@@ -70,13 +70,13 @@ describe("StaySheet", () => {
     expect(await screen.findByText(/Nothing open for this stay/)).toBeInTheDocument();
   });
 
-  it("titles an owner block and leaves out to-dos", async () => {
+  it("titles a seasonal closure and leaves out to-dos", async () => {
     renderStaySheet(
-      makeStay({ id: "b", blocked: true, guest: "Blocked", checkIn: day(9), checkOut: day(10) }),
+      makeStay({ id: "b", closed: true, guest: "Closed", checkIn: day(9), checkOut: day(10) }),
       [makeTask({ stayId: "b", due: day(8) })],
     );
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Blocked" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Closed" })).toBeInTheDocument();
     expect(within(dialog).queryByText("To-dos")).toBeNull();
     expect(within(dialog).queryByRole("checkbox")).toBeNull();
   });

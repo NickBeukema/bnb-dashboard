@@ -39,7 +39,7 @@ export function StaySheet({
           <div className="mx-auto flex w-full max-w-xl flex-col">
             <DrawerHeader className="gap-2 text-left">
               <DrawerTitle className="text-3xl font-semibold tracking-tight">
-                {stay.blocked ? "Blocked" : stay.guest}
+                {stay.guest}
               </DrawerTitle>
               <DrawerDescription asChild>
                 <div className="text-base">
@@ -61,7 +61,7 @@ export function StaySheet({
               ))}
             </dl>
 
-            {!stay.blocked && (
+            {!stay.closed && (
               <div className="mt-5 px-4">
                 <h3 className="px-2 text-lg font-semibold">To-dos</h3>
                 {own.length === 0 ? (

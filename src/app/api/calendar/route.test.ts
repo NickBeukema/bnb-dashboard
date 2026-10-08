@@ -401,16 +401,20 @@ describe("GET /api/calendar: task sync", () => {
     ]);
   });
 
-  it("creates no tasks for owner blocks", async () => {
+  it("creates tasks for private bookings but not for seasonal closures", async () => {
     feeds[FEEDS.WAVESONG_ICAL_URL] = ics([
-      { uid: "b1", start: "20261020", end: "20261022", summary: "Blocked" },
-      { uid: "b2", start: "20261020", end: "20261022", summary: "Airbnb (Not available)" },
+      { uid: "private", start: "20261020", end: "20261022", summary: "Blocked" },
+      { uid: "closed", start: "20261020", end: "20270415", summary: "Airbnb (Not available)" },
     ]);
 
     const { body } = await get();
 
-    expect(addedTasks()).toEqual([]);
-    // They still show on the calendar
+    expect(addedTasks().map((t) => t.description)).toEqual([
+      "bnb-private-send-welcome-letter",
+      "bnb-private-send-review-request",
+      "bnb-private-make-door-code",
+    ]);
+    // Both still show on the calendar
     expect(body.events[0].events).toHaveLength(2);
   });
 

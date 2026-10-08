@@ -20,7 +20,7 @@ Each call to `/api/calendar` does the following:
 1. Reads every property's iCal feed. Each feed is cached for an hour. If a feed can't be read,
    the others still sync; the response lists it in `failed`, and the board keeps that
    property's last known stays and names it in the footer.
-2. Plans tasks for guest stays (owner blocks such as "Blocked" or "Not available" get none).
+2. Plans tasks for every stay except seasonal closures (see [Owner blocks](#owner-blocks)).
    A task is planned once its due date, and the day it hangs off, are both within the next 30 days:
    - **Send Welcome Letter**, due 3 days before check-in at 11:00.
    - **Make Door Code**, due 3 days before check-in at 11:00. Every property except Red gets one.
@@ -38,6 +38,21 @@ more than a minute old. Ticking a task off completes it in Todoist, and Undo reo
 
 Each event's `checkIn` and `checkOut` are plain local days (`yyyy-MM-dd`), read from the feeds'
 date-only `DTSTART`/`DTEND`. `checkOut` is the day the guest leaves.
+
+### Owner blocks
+
+Dates the owner blocks off in a listing reach the feeds as "Blocked" or "Not available"
+events, with no guest name. A block means one of two things, depending on its length:
+
+- **14 nights or fewer: a private booking.** Someone is staying who didn't book through a
+  platform. It gets the same welcome letter, door code and review request tasks as any guest,
+  and the board shows it as a stay named "Private booking", with arrivals, departures and an
+  agenda entry.
+- **More than 14 nights: a seasonal closure.** The property is shut for the season. It gets no
+  tasks. The board shows it as a hatched "Closed" bar on the calendar and leaves it out of
+  arrivals, departures and the agenda.
+
+The cut-off is `PRIVATE_BOOKING_MAX_NIGHTS` in `src/lib/calendar-types.ts`.
 
 ## Setup
 
