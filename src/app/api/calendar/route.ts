@@ -185,6 +185,7 @@ const fetchIcal = async (
           dueDate: getDueDate(event, taskType).toISOString(),
           labels: [location],
         });
+        existingTaskIds.push(eventTaskId);
       } catch (error) {
         console.error("Error adding task:", error.responseData);
       }
@@ -219,21 +220,33 @@ const getExistingTaskIds = async (): Promise<string[]> => {
   )} & date before: ${format(taskEndDate, "M/d/yyyy")}`;
   console.log(`Todoist filter query: ${filterQuery}`);
 
-  // Fetch tasks from Todoist with error handling
-  const incompleteTasks: GetTasksResponse = await api.getTasksByFilter({
-    query: filterQuery,
-  });
-  const completedTasks: GetCompletedTasksResponse =
-    await api.getCompletedTasksByDueDate({
-      since: taskStartDate.toISOString(),
-      until: taskEndDate.toISOString(),
-    });
+  // Both endpoints are paginated (default 50 per page). Reading only the first
+  // page made tasks beyond it look missing, so they were re-created every hour.
+  const existingTaskIds: string[] = [];
 
-  const incompleteTaskIds = incompleteTasks.results.map(
-    (task) => task.description,
-  );
-  const completedTaskIds = completedTasks.items.map((task) => task.description);
-  const existingTaskIds = [...incompleteTaskIds, ...completedTaskIds];
+  let cursor: string | null = null;
+  do {
+    const page: GetTasksResponse = await api.getTasksByFilter({
+      query: filterQuery,
+      limit: 200,
+      cursor,
+    });
+    existingTaskIds.push(...page.results.map((task) => task.description));
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  do {
+    const page: GetCompletedTasksResponse =
+      await api.getCompletedTasksByDueDate({
+        since: taskStartDate.toISOString(),
+        until: taskEndDate.toISOString(),
+        limit: 200,
+        cursor,
+      });
+    existingTaskIds.push(...page.items.map((task) => task.description));
+    cursor = page.nextCursor;
+  } while (cursor);
+
   return existingTaskIds;
 };
 
