@@ -1,0 +1,20 @@
+# Installed at /etc/systemd/system/bnb-dashboard.service on the Pi (see README)
+[Unit]
+Description=BNB Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=care
+WorkingDirectory=/home/care/Desktop/bnb-dashboard
+Environment=NODE_ENV=production
+# A fresh clone has no build yet; make one rather than fail to start
+ExecStartPre=/bin/sh -c 'test -f .next/BUILD_ID || exec /usr/bin/npm run build'
+ExecStart=/usr/bin/npm start -- --hostname 0.0.0.0
+TimeoutStartSec=900
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { format } from "date-fns";
 import { KeyRoundIcon, ListTodoIcon, MailIcon, StarIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,7 +39,8 @@ export function TaskRow({
 
   const Icon = ICONS[task.kind];
   const overdue = isOverdue(task, today);
-  const id = `task-${task.id}`;
+  // The same task can show in two lists at once (agenda and the All to-dos drawer)
+  const id = useId();
 
   return (
     <li>

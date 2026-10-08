@@ -39,16 +39,17 @@ export function BoardThemeProvider({ children }: { children: React.ReactNode }) 
 
 function ModeProvider({ children }: { children: React.ReactNode }) {
   const { setTheme } = useTheme();
-  const [mode, setModeState] = useState<ThemeMode>("auto");
+  // null until the saved mode is read, so a saved light/dark choice isn't briefly overridden
+  // by what auto would pick (a flash of the wrong theme on load)
+  const [mode, setModeState] = useState<ThemeMode | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(MODE_KEY);
-    if (stored === "light" || stored === "dark") {
-      setModeState(stored);
-    }
+    setModeState(stored === "light" || stored === "dark" ? stored : "auto");
   }, []);
 
   useEffect(() => {
+    if (mode === null) return;
     if (mode !== "auto") {
       setTheme(mode);
       return;
@@ -64,7 +65,9 @@ function ModeProvider({ children }: { children: React.ReactNode }) {
     setModeState(next);
   };
 
-  return <ModeContext.Provider value={{ mode, setMode }}>{children}</ModeContext.Provider>;
+  return (
+    <ModeContext.Provider value={{ mode: mode ?? "auto", setMode }}>{children}</ModeContext.Provider>
+  );
 }
 
 const OPTIONS = [

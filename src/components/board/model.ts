@@ -1,4 +1,3 @@
-import type { CalendarSource, Task } from "@/app/api/calendar/route";
 import type { CSSProperties } from "react";
 import {
   differenceInCalendarDays,
@@ -7,6 +6,8 @@ import {
   startOfDay,
   subHours,
 } from "date-fns";
+import type { CalendarSource, Task } from "@/lib/calendar-types";
+import { PROPERTY_CONFIG } from "@/lib/properties";
 
 export type Property = {
   /** Matches the iCal source name and the Todoist label */
@@ -17,12 +18,11 @@ export type Property = {
 };
 
 // Lane order on the calendar, and the order properties are listed everywhere else
-export const PROPERTIES: Property[] = [
-  { name: "Wavesong", token: "wavesong", initial: "W" },
-  { name: "Red", token: "red-house", initial: "R" },
-  { name: "Lake Breeze", token: "lake-breeze", initial: "L" },
-  { name: "Nautical Nest", token: "nautical-nest", initial: "N" },
-];
+export const PROPERTIES: Property[] = PROPERTY_CONFIG.map(({ name, token, initial }) => ({
+  name,
+  token,
+  initial,
+}));
 
 const FALLBACK: Property = { name: "Other", token: "muted-foreground", initial: "?" };
 

@@ -14,7 +14,7 @@ import { StayCalendar, StayCalendarSkeleton } from "./stay-calendar";
 import { ThemeModeToggle } from "./theme";
 import { useBoard } from "./use-board";
 
-export function Board({ calendarFirst = false }: { calendarFirst?: boolean }) {
+export function Board() {
   const now = useNow();
   const { data, tasks, status, refresh, complete } = useBoard();
   const [stayId, setStayId] = useState<string | null>(null);
@@ -51,14 +51,6 @@ export function Board({ calendarFirst = false }: { calendarFirst?: boolean }) {
 
       {ready ? (
         <>
-          <Runway
-            today={today}
-            stays={data.stays}
-            tasks={tasks}
-            onSelectStay={(s) => setStayId(s.id)}
-            onCompleteTask={complete}
-            className={cn("tv:min-h-0 tv:flex-1", calendarFirst && "order-1")}
-          />
           <StayCalendar
             today={today}
             stays={data.stays}
@@ -70,6 +62,14 @@ export function Board({ calendarFirst = false }: { calendarFirst?: boolean }) {
             stays={data.stays}
             onSelectStay={(s) => setStayId(s.id)}
             className="md:hidden"
+          />
+          <Runway
+            today={today}
+            stays={data.stays}
+            tasks={tasks}
+            onSelectStay={(s) => setStayId(s.id)}
+            onCompleteTask={complete}
+            className="tv:min-h-0 tv:flex-1"
           />
         </>
       ) : status === "error" ? (
@@ -85,12 +85,12 @@ export function Board({ calendarFirst = false }: { calendarFirst?: boolean }) {
         </div>
       ) : (
         <>
-          <RunwaySkeleton className={cn("tv:min-h-0 tv:flex-1", calendarFirst && "order-1")} />
           <StayCalendarSkeleton className="hidden shrink-0 md:flex" />
+          <RunwaySkeleton className="tv:min-h-0 tv:flex-1" />
         </>
       )}
 
-      <footer className="order-2 mt-auto flex flex-wrap items-center justify-between gap-3 px-1">
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 px-1">
         <Button
           variant="outline"
           size="lg"

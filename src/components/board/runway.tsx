@@ -162,7 +162,7 @@ function Guest({
       onClick={() => onSelect(stay)}
       className="-mx-2 flex min-h-11 items-baseline gap-2 rounded-lg px-2 text-left outline-none transition-colors duration-200 hover:bg-muted/70 focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted"
     >
-      <span className="self-center text-lg font-semibold">{stay.guest}</span>
+      <span className="self-center text-lg font-semibold">{stay.guest}</span>{" "}
       <span className="self-center text-muted-foreground">{verb}</span>
     </button>
   );
