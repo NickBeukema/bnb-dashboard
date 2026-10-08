@@ -21,8 +21,8 @@ const TODOIST_API_TOKEN = process.env.TODOIST_API_TOKEN;
 const WAVESONG_ICAL_URL = process.env.WAVESONG_ICAL_URL;
 const RED_ICAL_URL = process.env.RED_ICAL_URL;
 const LAKE_BREEZE_ICAL_URL = process.env.LAKE_BREEZE_ICAL_URL;
-const BETSIE_ICAL_URL = process.env.BETSIE_ICAL_URL;
-const BETSIE_AIRBNB_ICAL_URL = process.env.BETSIE_AIRBNB_ICAL_URL;
+//const BETSIE_ICAL_URL = process.env.BETSIE_ICAL_URL;
+//const BETSIE_AIRBNB_ICAL_URL = process.env.BETSIE_AIRBNB_ICAL_URL;
 const NAUTICAL_NEST_ICAL_URL = process.env.NAUTICAL_NEST_ICAL_URL;
 
 // Validate required environment variables
@@ -31,8 +31,8 @@ const validateEnvironmentVariables = () => {
     { name: "WAVESONG_ICAL_URL", value: WAVESONG_ICAL_URL },
     { name: "RED_ICAL_URL", value: RED_ICAL_URL },
     { name: "LAKE_BREEZE_ICAL_URL", value: LAKE_BREEZE_ICAL_URL },
-    { name: "BETSIE_ICAL_URL", value: BETSIE_ICAL_URL },
-    { name: "BETSIE_AIRBNB_ICAL_URL", value: BETSIE_AIRBNB_ICAL_URL },
+    //{ name: "BETSIE_ICAL_URL", value: BETSIE_ICAL_URL },
+    //{ name: "BETSIE_AIRBNB_ICAL_URL", value: BETSIE_AIRBNB_ICAL_URL },
     { name: "NAUTICAL_NEST_ICAL_URL", value: NAUTICAL_NEST_ICAL_URL },
     { name: "TODOIST_API_TOKEN", value: TODOIST_API_TOKEN },
   ];
@@ -286,18 +286,18 @@ export async function GET(request: Request) {
       "Lake Breeze",
       existingTaskIds,
     );
-    const betsieEvents = await fetchIcal(
-      BETSIE_ICAL_URL!,
-      BROWN,
-      "Betsie",
-      existingTaskIds,
-    );
-    const betsieAirbnbEvents = await fetchIcal(
-      BETSIE_AIRBNB_ICAL_URL!,
-      BROWN,
-      "Betsie Airbnb",
-      existingTaskIds,
-    );
+//    const betsieEvents = await fetchIcal(
+//      BETSIE_ICAL_URL!,
+//      BROWN,
+//      "Betsie",
+//      existingTaskIds,
+//    );
+//    const betsieAirbnbEvents = await fetchIcal(
+//      BETSIE_AIRBNB_ICAL_URL!,
+//      BROWN,
+//      "Betsie Airbnb",
+//      existingTaskIds,
+//    );
     const nauticalNestEvents = await fetchIcal(
       NAUTICAL_NEST_ICAL_URL!,
       GOLD,
@@ -321,16 +321,16 @@ export async function GET(request: Request) {
         events: lakeBreezeEvents,
         color: "#21a677",
       },
-      {
-        name: "Betsie",
-        events: betsieEvents,
-        color: "#4a120c",
-      },
-      {
-        name: "Betsie Airbnb",
-        events: betsieAirbnbEvents,
-        color: "#4a120c",
-      },
+//      {
+//        name: "Betsie",
+//        events: betsieEvents,
+//        color: "#4a120c",
+//      },
+//      {
+//        name: "Betsie Airbnb",
+//        events: betsieAirbnbEvents,
+//        color: "#4a120c",
+//      },
       {
         name: "Nautical Nest",
         events: nauticalNestEvents,
