@@ -262,6 +262,7 @@ export type CalendarEvent = {
   start: string;
   end: string;
   location: string | null;
+  description?: string | null;
   backgroundColor: string;
   allDay: boolean;
 };
@@ -273,13 +274,10 @@ export type CalendarSource = {
 };
 
 /**
- * Handles GET requests to /api/calendar.
- * Fetches and parses iCal data from a specified URL, then returns it as JSON.
- *
- * @param {Request} request - The incoming request object.
- * @returns {Promise<NextResponse>} A promise that resolves to the response.
+ * Syncs the iCal feeds into Todoist tasks, then loads events and open tasks
+ * for GET /api/calendar.
  */
-export async function GET(request: Request) {
+async function loadCalendar(): Promise<{ body: object; status: number }> {
   try {
     // Validate environment variables first
     validateEnvironmentVariables();
@@ -385,28 +383,40 @@ export async function GET(request: Request) {
     }
 
     // Return the formatted events and tasks as a JSON response
-    return NextResponse.json(
-      {
+    return {
+      body: {
         events: formattedEvents,
         tasks: formattedTasks,
         lastUpdated: new Date().toISOString(),
       },
-      { status: 200 },
-    );
+      status: 200,
+    };
   } catch (error) {
     // Handle any unexpected errors during the process
     console.error("Error in calendar API:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred";
 
-    return NextResponse.json(
-      {
+    return {
+      body: {
         error: "Internal Server Error",
         details: errorMessage,
         events: [],
         tasks: [],
       },
-      { status: 500 },
-    );
+      status: 500,
+    };
   }
+}
+
+// The kitchen TV and phones all poll this route. Requests that arrive while a sync is
+// already running share its result, so two syncs can't race and create the same task twice.
+let inFlight: Promise<{ body: object; status: number }> | null = null;
+
+export async function GET() {
+  inFlight ??= loadCalendar().finally(() => {
+    inFlight = null;
+  });
+  const { body, status } = await inFlight;
+  return NextResponse.json(body, { status });
 }
