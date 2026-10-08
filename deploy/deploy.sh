@@ -18,6 +18,11 @@ for _ in $(seq 60); do
 done
 curl -sf -o /dev/null --max-time 5 http://localhost:3000/ || { echo "Dashboard didn't come back up" >&2; exit 1; }
 
+# HTTPS for phones on the tailnet (installing the app needs it), at
+# https://<this machine's MagicDNS name>/. Tailscale keeps the setting and renews the
+# certificate; setting it again is harmless and restores it on a fresh Pi.
+sudo tailscale serve --bg --https=443 http://localhost:3000 >/dev/null
+
 # The kiosk supervisor relaunches Chromium on the new build
 pkill -x chromium || true
 echo "Deployed $(git rev-parse --short HEAD)"

@@ -140,7 +140,8 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
   1. pulls the latest code;
   2. runs `npm ci` and `npm run build` while the old version keeps serving;
   3. restarts the service and waits for it to come back up;
-  4. reloads the TV.
+  4. makes sure Tailscale serves it over HTTPS;
+  5. reloads the TV.
 
   It asks for the `sudo` password for the restart.
 
@@ -153,10 +154,10 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
   ```
 
 - **Logs:** `journalctl -u bnb-dashboard.service -f`.
-- **HTTPS for phones:** with HTTPS certificates enabled for the tailnet (Tailscale admin console,
-  DNS page), run `sudo tailscale serve --bg 3000` once on the Pi. The board is then at
-  `https://raspberrypi.tail1f7a99.ts.net/` for any device signed in to the tailnet. The setting
-  survives reboots.
+- **HTTPS for phones:** Tailscale serves the board at `https://raspberrypi.tail1f7a99.ts.net/`
+  for any device signed in to the tailnet, and renews the certificate itself. The deploy script
+  sets this up (`tailscale serve`); check it with `tailscale serve status`. It needs HTTPS
+  certificates enabled for the tailnet (Tailscale admin console, DNS page), which they are.
 - **Kiosk:** `~/.local/bin/kiosk.sh` keeps Chromium open on `http://localhost:3000/` and
   relaunches it if it exits.
   - To reload the TV, run `pkill -x chromium`.
