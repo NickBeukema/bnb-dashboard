@@ -122,7 +122,9 @@ export function AllTasksSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85dvh]">
+      {/* A fixed height, not just a max: the ScrollArea's viewport is height: 100%, which only
+          resolves against a definite height. Without it the list overflows and can't scroll. */}
+      <DrawerContent className="h-[80dvh]">
         <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
           <DrawerHeader className="text-left">
             <DrawerTitle className="text-3xl font-semibold tracking-tight">All to-dos</DrawerTitle>

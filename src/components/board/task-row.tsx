@@ -17,6 +17,8 @@ const ICONS: Record<TaskKind, typeof MailIcon> = {
 
 // Long enough to see the tick land before the row leaves the list
 const SETTLE_MS = 450;
+// A press whose row moved further than this was a scroll, or the list shifted under the finger
+const MOVED_PX = 8;
 
 export function TaskRow({
   task,
@@ -32,6 +34,7 @@ export function TaskRow({
 }) {
   const [checked, setChecked] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const pressTop = useRef<number | null>(null);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const Icon = ICONS[task.kind];
@@ -42,6 +45,16 @@ export function TaskRow({
     <li>
       <label
         htmlFor={id}
+        onPointerDown={(e) => {
+          pressTop.current = e.currentTarget.getBoundingClientRect().top;
+        }}
+        onClickCapture={(e) => {
+          // Only a tap on a row that stayed put completes it. Fast flicks on a touchscreen can
+          // still end in a click, and rows close up as tasks finish, so check before ticking.
+          const top = e.currentTarget.getBoundingClientRect().top;
+          if (pressTop.current !== null && Math.abs(top - pressTop.current) > MOVED_PX) e.preventDefault();
+          pressTop.current = null;
+        }}
         className={cn(
           "group flex min-h-14 cursor-pointer items-center gap-3 rounded-xl px-2 py-2 transition-colors duration-200 hover:bg-muted/70 active:bg-muted",
           checked && "opacity-60",
