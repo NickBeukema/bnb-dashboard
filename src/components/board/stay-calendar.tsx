@@ -152,11 +152,17 @@ function Week({
   return (
     <div className="relative grid grid-cols-[var(--gutter)_1fr] border-b last:border-b-0 [--gutter:1.75rem] [--lane:2rem]">
       {/* Day columns: today tinted, the past washed out on top of the bars */}
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 left-(--gutter) grid grid-cols-7">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 left-(--gutter) grid grid-cols-7"
+      >
         {Array.from({ length: 7 }, (_, i) => (
           <div
             key={i}
-            className={cn(i > 0 && "border-l border-border/60", i === todayIndex && "bg-foreground/[0.045]")}
+            className={cn(
+              i > 0 && "border-l border-border/60",
+              i === todayIndex && "bg-foreground/[0.045]",
+            )}
           />
         ))}
       </div>
@@ -174,9 +180,7 @@ function Week({
                   i < pastDays && "text-muted-foreground",
                 )}
               >
-                {day.getDate() === 1 || (isFirst && i === 0)
-                  ? format(day, "MMM d")
-                  : day.getDate()}
+                {day.getDate() === 1 || (isFirst && i === 0) ? format(day, "MMM d") : day.getDate()}
               </span>
             </span>
           );
@@ -194,7 +198,10 @@ function Week({
             </span>
             <div className="relative h-(--lane)">
               {stays
-                .filter((s) => s.property.name === property.name && s.checkIn < end && s.checkOut >= start)
+                .filter(
+                  (s) =>
+                    s.property.name === property.name && s.checkIn < end && s.checkOut >= start,
+                )
                 .map((stay) => (
                   <Bar key={stay.id} stay={stay} weekStart={start} onSelect={onSelectStay} />
                 ))}
@@ -252,7 +259,13 @@ function Bar({
         endsHere ? "rounded-r-full" : "rounded-r-none",
       )}
     >
-      <span className={cn("truncate", stay.blocked && "text-muted-foreground", to - from < 1 && "sr-only")}>
+      <span
+        className={cn(
+          "truncate",
+          stay.blocked && "text-muted-foreground",
+          to - from < 1 && "sr-only",
+        )}
+      >
         {stay.blocked ? "Blocked" : stay.guest}
       </span>
     </button>

@@ -1,7 +1,15 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LAKE_BREEZE, NAUTICAL_NEST, RED, WAVESONG, day, makeStay, makeTask } from "../../../test/board-fixtures";
+import {
+  LAKE_BREEZE,
+  NAUTICAL_NEST,
+  RED,
+  WAVESONG,
+  day,
+  makeStay,
+  makeTask,
+} from "../../../test/board-fixtures";
 import type { BoardTask, Stay } from "./model";
 import { Runway } from "./runway";
 
@@ -11,7 +19,13 @@ function renderRunway(stays: Stay[] = [], tasks: BoardTask[] = []) {
   const onSelectStay = vi.fn();
   const onCompleteTask = vi.fn();
   render(
-    <Runway today={today} stays={stays} tasks={tasks} onSelectStay={onSelectStay} onCompleteTask={onCompleteTask} />,
+    <Runway
+      today={today}
+      stays={stays}
+      tasks={tasks}
+      onSelectStay={onSelectStay}
+      onCompleteTask={onCompleteTask}
+    />,
   );
   const column = (name: string) => screen.getByRole("region", { name });
   return { onSelectStay, onCompleteTask, column };
@@ -35,10 +49,13 @@ describe("Runway", () => {
   });
 
   it("puts overdue work under Today", () => {
-    const { column } = renderRunway([], [
-      makeTask({ due: day(2), title: "Old letter" }),
-      makeTask({ due: today, title: "Today letter" }),
-    ]);
+    const { column } = renderRunway(
+      [],
+      [
+        makeTask({ due: day(2), title: "Old letter" }),
+        makeTask({ due: today, title: "Today letter" }),
+      ],
+    );
     const todayCol = column("Today");
     expect(within(todayCol).getByText("Old letter")).toBeInTheDocument();
     expect(within(todayCol).getByText("Today letter")).toBeInTheDocument();
@@ -46,12 +63,15 @@ describe("Runway", () => {
   });
 
   it("only lists a later day's own tasks", () => {
-    const { column } = renderRunway([], [
-      makeTask({ due: day(2), title: "Old letter" }),
-      makeTask({ due: day(8), title: "Tomorrow letter" }),
-      makeTask({ due: day(9), title: "Friday letter" }),
-      makeTask({ due: day(10), title: "Saturday letter" }),
-    ]);
+    const { column } = renderRunway(
+      [],
+      [
+        makeTask({ due: day(2), title: "Old letter" }),
+        makeTask({ due: day(8), title: "Tomorrow letter" }),
+        makeTask({ due: day(9), title: "Friday letter" }),
+        makeTask({ due: day(10), title: "Saturday letter" }),
+      ],
+    );
     const tomorrow = column("Tomorrow");
     expect(within(tomorrow).getByText("Tomorrow letter")).toBeInTheDocument();
     expect(within(tomorrow).queryByText("Old letter")).toBeNull();
@@ -79,12 +99,22 @@ describe("Runway", () => {
     ]);
     const friday = column("Friday");
     expect(within(friday).getByText("Same-day turnover")).toBeInTheDocument();
-    const names = within(friday).getAllByRole("button").map((b) => b.textContent);
+    const names = within(friday)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
     expect(names).toEqual(["Joseph leaves", "Michelle arrives"]);
   });
 
   it("leaves blocked dates out of the movements", () => {
-    renderRunway([makeStay({ property: WAVESONG, blocked: true, guest: "Blocked", checkIn: today, checkOut: day(9) })]);
+    renderRunway([
+      makeStay({
+        property: WAVESONG,
+        blocked: true,
+        guest: "Blocked",
+        checkIn: today,
+        checkOut: day(9),
+      }),
+    ]);
     expect(screen.queryByRole("list", { name: "Arrivals and departures" })).toBeNull();
   });
 

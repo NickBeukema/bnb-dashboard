@@ -6,22 +6,26 @@ step with the bookings.
 
 ## Routes
 
-| Route | What it is |
-| --- | --- |
-| `/v3` | The board. The wall TV (portrait, 1080×1920) shows it, and it also works on phones. |
-| `/` | Redirects to `/v3`. |
-| `GET /api/calendar` | Bookings and open to-dos. This is also where the sync runs (see below). |
-| `PATCH /api/task/:id` | Takes `{ "completed": boolean }`. Completes or reopens a task. |
+| Route                 | What it is                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `/`                   | The board. The wall TV (portrait, 1080×1920) shows it, and it also works on phones. |
+| `/v3`                 | Redirects to `/` (the board's old address).                                         |
+| `GET /api/calendar`   | Bookings and open to-dos. This is also where the sync runs (see below).             |
+| `PATCH /api/task/:id` | Takes `{ "completed": boolean }`. Completes or reopens a task.                      |
 
 ## How the Todoist sync works
 
 Each call to `/api/calendar` does the following:
 
-1. Reads every property's iCal feed. Each feed is cached for an hour.
-2. Plans tasks for every stay that starts in the next 30 days:
-   - **Send Welcome Letter**, due 3 days before check-in.
-   - **Make Door Code**, due 3 days before check-in. Every property except Red gets one.
-   - **Send Review Request**, due 2 days after checkout.
+1. Reads every property's iCal feed. Each feed is cached for an hour. If a feed can't be read,
+   the others still sync; the response lists it in `failed`, and the board keeps that
+   property's last known stays and names it in the footer.
+2. Plans tasks for guest stays (owner blocks such as "Blocked" or "Not available" get none).
+   A task is planned once its due date, and the day it hangs off, are both within the next 30 days:
+   - **Send Welcome Letter**, due 3 days before check-in at 11:00.
+   - **Make Door Code**, due 3 days before check-in at 11:00. Every property except Red gets one.
+   - **Send Review Request**, due at the start of the third day after checkout. It hangs off
+     checkout, so long stays and stays that began earlier still get one.
 3. Skips any task that already exists. Every task's description holds a stable key
    (`bnb-<event uid>-<task slug>`), and the sync checks it against both open and completed
    tasks. As a result:
@@ -32,8 +36,8 @@ Each call to `/api/calendar` does the following:
 The board polls every 5 minutes, and also refresh when the tab becomes visible if the data is
 more than a minute old. Ticking a task off completes it in Todoist, and Undo reopens it.
 
-Event dates in the API are shifted (start +11h, end +24h), left over from an older FullCalendar
-view. The board undoes that shift in `toStays` (`src/components/board/model.ts`).
+Each event's `checkIn` and `checkOut` are plain local days (`yyyy-MM-dd`), read from the feeds'
+date-only `DTSTART`/`DTEND`. `checkOut` is the day the guest leaves.
 
 ## Setup
 
@@ -52,14 +56,16 @@ initial and door-code rule live together in `src/lib/properties.ts`.
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `npm run dev` | Starts the dev server on :3000. |
-| `npm run build` / `npm start` | Production build and server. |
-| `npm test` | Runs the Vitest suite once. |
-| `npm run test:watch` | Runs Vitest in watch mode. |
-| `npm run coverage` | Runs the suite with a v8 coverage report in `coverage/`. |
-| `npm run typecheck` | Runs `tsc --noEmit`. |
+| Script                            | What it does                                                    |
+| --------------------------------- | --------------------------------------------------------------- |
+| `npm run dev`                     | Starts the dev server on :3000.                                 |
+| `npm run build` / `npm start`     | Production build and server.                                    |
+| `npm test`                        | Runs the Vitest suite once.                                     |
+| `npm run test:watch`              | Runs Vitest in watch mode.                                      |
+| `npm run coverage`                | Runs the suite with a v8 coverage report in `coverage/`.        |
+| `npm run typecheck`               | Runs `tsc --noEmit`.                                            |
+| `npm run lint`                    | Lints with oxlint (`.oxlintrc.json`).                           |
+| `npm run format` / `format:check` | Formats with oxfmt (`.oxfmtrc.json`), or checks the formatting. |
 
 ## Tests
 
@@ -76,7 +82,7 @@ The tests sit next to the code as `*.test.ts(x)` files. Shared setup and fixture
 ## Code map
 
 ```
-src/app/                  layout, globals.css (Tailwind and the shadcn theme), /v3 page
+src/app/                  layout, globals.css (Tailwind and the shadcn theme), board page
 src/app/api/              calendar sync and task routes
 src/components/board/     board UI, model.ts (API → stays/tasks), use-board.ts (data and polling)
 src/components/ui/        shadcn components
@@ -102,6 +108,7 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
   4. reloads the TV.
 
   It asks for the `sudo` password for the restart.
+
 - **Changing the unit:** copy the file over the installed one, then reload and restart:
 
   ```sh
@@ -109,8 +116,9 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
   sudo systemctl daemon-reload
   sudo systemctl restart bnb-dashboard.service
   ```
+
 - **Logs:** `journalctl -u bnb-dashboard.service -f`.
-- **Kiosk:** `~/.local/bin/kiosk.sh` keeps Chromium open on `http://localhost:3000/v3` and
+- **Kiosk:** `~/.local/bin/kiosk.sh` keeps Chromium open on `http://localhost:3000/` and
   relaunches it if it exits.
   - To reload the TV, run `pkill -x chromium`.
   - Don't use `pkill -f kiosk.sh` over SSH, because it matches the SSH command itself.

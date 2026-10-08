@@ -31,11 +31,18 @@ export function Board() {
           <>
             <div>
               <p className="text-lg text-muted-foreground md:text-xl">{format(now, "EEEE")}</p>
-              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{format(now, "MMMM d")}</h1>
+              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+                {format(now, "MMMM d")}
+              </h1>
             </div>
-            <p className="text-4xl font-light tracking-tight tabular-nums md:text-5xl" aria-label={`Time ${format(now, "h:mm a")}`}>
+            <p
+              className="text-4xl font-light tracking-tight tabular-nums md:text-5xl"
+              aria-label={`Time ${format(now, "h:mm a")}`}
+            >
               {format(now, "h:mm")}
-              <span className="ml-1 text-xl text-muted-foreground md:text-2xl">{format(now, "a")}</span>
+              <span className="ml-1 text-xl text-muted-foreground md:text-2xl">
+                {format(now, "a")}
+              </span>
             </p>
           </>
         ) : (
@@ -76,7 +83,7 @@ export function Board() {
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <TriangleAlertIcon aria-hidden className="size-8 text-destructive" />
           <div>
-            <p className="text-xl font-semibold">Couldn't load the calendars</p>
+            <p className="text-xl font-semibold">{"Couldn't load the calendars"}</p>
             <p className="text-muted-foreground">Check the internet connection, then try again.</p>
           </div>
           <Button size="lg" className="h-12 px-5 text-base" onClick={refresh}>
@@ -103,7 +110,12 @@ export function Board() {
           {data && <span className="text-muted-foreground tabular-nums">{tasks.length}</span>}
         </Button>
         <div className="flex items-center gap-2">
-          <SyncStatus status={status} lastUpdated={data?.lastUpdated ?? null} onRefresh={refresh} />
+          <SyncStatus
+            status={status}
+            lastUpdated={data?.lastUpdated ?? null}
+            failed={data?.failed ?? []}
+            onRefresh={refresh}
+          />
           <ThemeModeToggle />
         </div>
       </footer>
@@ -130,27 +142,34 @@ export function Board() {
   );
 }
 
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
 function SyncStatus({
   status,
   lastUpdated,
+  failed,
   onRefresh,
 }: {
   status: string;
   lastUpdated: Date | null;
+  failed: string[];
   onRefresh: () => void;
 }) {
   const busy = status === "loading" || status === "refreshing";
+  const warn = status === "error" || failed.length > 0;
   return (
     <div className="flex items-center gap-1">
       <p
         aria-live="polite"
-        className={cn("text-sm tabular-nums", status === "error" ? "text-destructive" : "text-muted-foreground")}
+        className={cn("text-sm tabular-nums", warn ? "text-destructive" : "text-muted-foreground")}
       >
         {status === "error" && lastUpdated
           ? `Couldn't refresh. Showing ${format(lastUpdated, "h:mm a")}`
-          : lastUpdated
-            ? `Updated ${format(lastUpdated, "h:mm a")}`
-            : "Loading…"}
+          : lastUpdated && failed.length > 0
+            ? `Couldn't reach ${listFormat.format(failed)}. Updated ${format(lastUpdated, "h:mm a")}`
+            : lastUpdated
+              ? `Updated ${format(lastUpdated, "h:mm a")}`
+              : "Loading…"}
       </p>
       <Button
         variant="ghost"

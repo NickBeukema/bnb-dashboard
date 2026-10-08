@@ -1,19 +1,18 @@
-// The GET /api/calendar response, shared by the API route and both dashboards
+// The GET /api/calendar response, shared by the API route and the board
 
-/**
- * One booking or owner block. All-day events are shifted for the classic FullCalendar view:
- * `start` is check-in day at 11:00 and `end` is the midnight after checkout.
- */
+/** One booking or owner block */
 export type CalendarEvent = {
   id: string;
   title: string;
-  start: string;
-  end: string;
-  location: string | null;
-  description?: string | null;
-  backgroundColor: string;
-  allDay: boolean;
+  /** Local day, `yyyy-MM-dd` */
+  checkIn: string;
+  /** Local day, `yyyy-MM-dd`. The day the guest leaves, not the last night. */
+  checkOut: string;
+  description: string | null;
 };
+
+/** Owner blocks ("Blocked", "Not available") hold dates but have no guest */
+export const isBlocked = (title: string) => /^blocked\b|not available/i.test(title);
 
 export type CalendarSource = {
   name: string;
@@ -35,5 +34,7 @@ export type Task = {
 export type CalendarResponse = {
   events: CalendarSource[];
   tasks: Task[];
+  /** Properties whose feed couldn't be read this time. Their `events` are empty. */
+  failed: string[];
   lastUpdated: string;
 };

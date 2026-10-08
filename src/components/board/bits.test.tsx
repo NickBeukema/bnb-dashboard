@@ -5,7 +5,9 @@ import { propertyByName } from "./model";
 
 describe("PropertySwatch", () => {
   it("renders a decorative dot in the property's color", () => {
-    const { container } = render(<PropertySwatch property={propertyByName("Lake Breeze")} className="size-5" />);
+    const { container } = render(
+      <PropertySwatch property={propertyByName("Lake Breeze")} className="size-5" />,
+    );
     const dot = container.firstElementChild as HTMLElement;
     expect(dot).toHaveAttribute("aria-hidden", "true");
     expect(dot.style.getPropertyValue("--prop")).toBe("var(--lake-breeze)");
@@ -17,10 +19,14 @@ describe("PropertySwatch", () => {
 
 describe("PropertyName", () => {
   it("pairs the swatch with the name, so color is never the only cue", () => {
-    const { container } = render(<PropertyName property={propertyByName("Nautical Nest")} className="text-lg" />);
+    const { container } = render(
+      <PropertyName property={propertyByName("Nautical Nest")} className="text-lg" />,
+    );
     expect(screen.getByText("Nautical Nest")).toHaveClass("truncate");
     expect(container.firstElementChild).toHaveClass("text-lg");
-    expect(container.querySelector("[aria-hidden]")?.getAttribute("style")).toContain("var(--nautical-nest)");
+    expect(container.querySelector("[aria-hidden]")?.getAttribute("style")).toContain(
+      "var(--nautical-nest)",
+    );
   });
 
   it("shows an unknown property by name", () => {
@@ -71,7 +77,9 @@ describe("useNow", () => {
   it("restarts the timer when the interval changes", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 7, 20, 0, 0));
-    const { result, rerender } = renderHook(({ ms }) => useNow(ms), { initialProps: { ms: 60_000 } });
+    const { result, rerender } = renderHook(({ ms }) => useNow(ms), {
+      initialProps: { ms: 60_000 },
+    });
     rerender({ ms: 1_000 });
     act(() => {
       vi.advanceTimersByTime(1_000);

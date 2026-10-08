@@ -34,15 +34,15 @@ describe("StayAgenda", () => {
       makeStay({ guest: "Day 30", checkIn: day(6, 11), checkOut: day(8, 11) }),
       makeStay({ guest: "Too far", checkIn: day(7, 11), checkOut: day(9, 11) }),
     ]);
-    expect(rows().map((r) => within(r).getByText(/^[A-Z]/, { selector: ".text-lg" }).textContent)).toEqual([
-      "Leaving today",
-      "Soon",
-      "Day 30",
-    ]);
+    expect(
+      rows().map((r) => within(r).getByText(/^[A-Z]/, { selector: ".text-lg" }).textContent),
+    ).toEqual(["Leaving today", "Soon", "Day 30"]);
   });
 
   it("leaves out owner blocks", () => {
-    renderAgenda([makeStay({ guest: "Blocked", blocked: true, checkIn: day(9), checkOut: day(10) })]);
+    renderAgenda([
+      makeStay({ guest: "Blocked", blocked: true, checkIn: day(9), checkOut: day(10) }),
+    ]);
     expect(rows()).toHaveLength(0);
   });
 
@@ -72,7 +72,9 @@ describe("StayAgenda", () => {
   });
 
   it("shows the property", () => {
-    renderAgenda([makeStay({ property: RED, guest: "Dennis", checkIn: day(15), checkOut: day(18) })]);
+    renderAgenda([
+      makeStay({ property: RED, guest: "Dennis", checkIn: day(15), checkOut: day(18) }),
+    ]);
     expect(within(rows()[0]).getByText("Red")).toBeInTheDocument();
   });
 

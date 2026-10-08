@@ -53,7 +53,8 @@ export function TaskRow({
           // Only a tap on a row that stayed put completes it. Fast flicks on a touchscreen can
           // still end in a click, and rows close up as tasks finish, so check before ticking.
           const top = e.currentTarget.getBoundingClientRect().top;
-          if (pressTop.current !== null && Math.abs(top - pressTop.current) > MOVED_PX) e.preventDefault();
+          if (pressTop.current !== null && Math.abs(top - pressTop.current) > MOVED_PX)
+            e.preventDefault();
           pressTop.current = null;
         }}
         className={cn(

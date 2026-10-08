@@ -25,13 +25,21 @@ describe("TaskRow", () => {
   });
 
   it("labels the checkbox with the row text", () => {
-    renderRow({ task: makeTask({ due: today, title: "Door code", kind: "door-code", guest: "Eva" }) });
+    renderRow({
+      task: makeTask({ due: today, title: "Door code", kind: "door-code", guest: "Eva" }),
+    });
     expect(screen.getByRole("checkbox", { name: /Door code/ })).toBeInTheDocument();
   });
 
   it("omits the guest line when there is no guest or property", () => {
     const { container } = renderRow({
-      task: makeTask({ due: today, kind: "other", title: "Buy towels", guest: null, property: null }),
+      task: makeTask({
+        due: today,
+        kind: "other",
+        title: "Buy towels",
+        guest: null,
+        property: null,
+      }),
     });
     expect(screen.getByText("Buy towels")).toBeInTheDocument();
     expect(container.querySelector(".text-sm.text-muted-foreground")).toBeNull();

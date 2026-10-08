@@ -11,10 +11,10 @@ npm run build
 
 sudo systemctl restart bnb-dashboard.service
 for _ in $(seq 60); do
-  curl -sf -o /dev/null --max-time 5 http://localhost:3000/v3 && break
+  curl -sf -o /dev/null --max-time 5 http://localhost:3000/ && break
   sleep 1
 done
-curl -sf -o /dev/null --max-time 5 http://localhost:3000/v3 || { echo "Dashboard didn't come back up" >&2; exit 1; }
+curl -sf -o /dev/null --max-time 5 http://localhost:3000/ || { echo "Dashboard didn't come back up" >&2; exit 1; }
 
 # The kiosk supervisor relaunches Chromium on the new build
 pkill -x chromium || true

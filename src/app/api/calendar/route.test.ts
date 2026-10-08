@@ -176,9 +176,15 @@ describe("GET /api/calendar: events", () => {
     }
   });
 
-  it("shifts all-day events: start +11h, end +24h", async () => {
+  it("returns check-in and checkout as plain local days", async () => {
     feeds[FEEDS.LAKE_BREEZE_ICAL_URL] = ics([
-      { uid: "ann", start: "20261020", end: "20261023", summary: "Reserved - Ann", description: "Notes" },
+      {
+        uid: "ann",
+        start: "20261020",
+        end: "20261023",
+        summary: "Reserved - Ann",
+        description: "Notes",
+      },
     ]);
 
     const { body } = await get();
@@ -188,30 +194,31 @@ describe("GET /api/calendar: events", () => {
       {
         id: "ann",
         title: "Reserved - Ann",
-        // Check-in day at 11:00 local, and the midnight after checkout
-        start: "2026-10-20T15:00:00.000Z",
-        end: "2026-10-24T04:00:00.000Z",
-        location: "Lake Breeze",
+        checkIn: "2026-10-20",
+        checkOut: "2026-10-23",
         description: "Notes",
-        backgroundColor: "#21a677",
-        allDay: true,
       },
     ]);
   });
 
   it("treats an all-day event without DTEND as one day long", async () => {
-    // node-ical fills in DTSTART + 1 day per RFC 5545, so the route's `end ?? start`
+    // node-ical fills in DTSTART + 1 day per RFC 5545, so the parser's `end ?? start`
     // fallback never applies to date-only events
     feeds[FEEDS.WAVESONG_ICAL_URL] = ics([{ uid: "solo", start: "20261020" }]);
     const { body } = await get();
     const [event] = body.events[0].events;
-    expect(event.end).toBe("2026-10-22T04:00:00.000Z");
+    expect(event.checkOut).toBe("2026-10-21");
     expect(event.description).toBeNull();
   });
 
   it("reads summaries that carry parameters", async () => {
     feeds[FEEDS.RED_ICAL_URL] = ics([
-      { uid: "p", start: "20261020", end: "20261022", summaryLine: "SUMMARY;LANGUAGE=en:Reserved - Pat" },
+      {
+        uid: "p",
+        start: "20261020",
+        end: "20261022",
+        summaryLine: "SUMMARY;LANGUAGE=en:Reserved - Pat",
+      },
     ]);
     const { body } = await get();
     expect(body.events[1].events[0].title).toBe("Reserved - Pat");
@@ -227,12 +234,49 @@ describe("GET /api/calendar: events", () => {
     expect(body.events[0].events.map((e: { id: string }) => e.id)).toEqual(["e"]);
   });
 
-  it("returns 500 when a feed can't be fetched", async () => {
+  it("keeps the days right when the clocks change during or at the end of a stay", async () => {
+    feeds[FEEDS.WAVESONG_ICAL_URL] = ics([
+      { uid: "fall", start: "20261030", end: "20261101" },
+      { uid: "spring", start: "20270314", end: "20270316" },
+    ]);
+    const { body } = await get();
+    expect(
+      body.events[0].events.map((e: { checkIn: string; checkOut: string }) => [
+        e.checkIn,
+        e.checkOut,
+      ]),
+    ).toEqual([
+      ["2026-10-30", "2026-11-01"],
+      ["2027-03-14", "2027-03-16"],
+    ]);
+  });
+
+  it("still returns and syncs the other feeds when one can't be fetched", async () => {
     feeds[FEEDS.RED_ICAL_URL] = new Response("nope", { status: 404, statusText: "Not Found" });
+    feeds[FEEDS.LAKE_BREEZE_ICAL_URL] = ics([{ uid: "ann", start: "20261020", end: "20261023" }]);
+
     const { status, body } = await get();
-    expect(status).toBe(500);
-    expect(body.details).toBe("Failed to fetch iCal data: Not Found");
-    expect(body.events).toEqual([]);
+
+    expect(status).toBe(200);
+    expect(body.failed).toEqual(["Red"]);
+    expect(
+      body.events.map((s: { name: string; events: unknown[] }) => [s.name, s.events.length]),
+    ).toEqual([
+      ["Wavesong", 0],
+      ["Red", 0],
+      ["Lake Breeze", 1],
+      ["Nautical Nest", 0],
+    ]);
+    expect(addedTasks()).toHaveLength(3);
+    expect(console.error).toHaveBeenCalledWith(
+      "Error reading the Red feed:",
+      new Error("Failed to fetch iCal data: Not Found"),
+    );
+  });
+
+  it("reports no failed feeds when every feed loads", async () => {
+    const { body } = await get();
+    expect(body.failed).toEqual([]);
   });
 });
 
@@ -248,14 +292,14 @@ describe("GET /api/calendar: task sync", () => {
       {
         content: "Send Welcome Letter (Reserved - Ann)",
         description: "bnb-ann-send-welcome-letter",
-        // 3 days before the shifted start (Oct 20 11:00 local)
+        // 11:00 local, 3 days before the Oct 20 check-in
         dueDate: "2026-10-17T15:00:00.000Z",
         labels: ["Lake Breeze"],
       },
       {
         content: "Send Review Request (Reserved - Ann)",
         description: "bnb-ann-send-review-request",
-        // 2 days after the shifted end (midnight after the Oct 23 checkout)
+        // Local midnight starting the third day after the Oct 23 checkout
         dueDate: "2026-10-26T04:00:00.000Z",
         labels: ["Lake Breeze"],
       },
@@ -284,7 +328,9 @@ describe("GET /api/calendar: task sync", () => {
   });
 
   it("skips tasks that already exist, open or completed", async () => {
-    sdk.api.getTasksByFilter.mockResolvedValue(page([{ description: "bnb-ann-send-welcome-letter" }]));
+    sdk.api.getTasksByFilter.mockResolvedValue(
+      page([{ description: "bnb-ann-send-welcome-letter" }]),
+    );
     sdk.api.getCompletedTasksByDueDate.mockResolvedValue(
       completedPage([{ description: "bnb-ann-make-door-code" }]),
     );
@@ -300,7 +346,9 @@ describe("GET /api/calendar: task sync", () => {
       .mockResolvedValueOnce(page([{ description: "bnb-a-send-welcome-letter" }], "open-2"))
       .mockResolvedValueOnce(page([{ description: "bnb-a-send-review-request" }]));
     sdk.api.getCompletedTasksByDueDate
-      .mockResolvedValueOnce(completedPage([{ description: "bnb-b-send-welcome-letter" }], "done-2"))
+      .mockResolvedValueOnce(
+        completedPage([{ description: "bnb-b-send-welcome-letter" }], "done-2"),
+      )
       .mockResolvedValueOnce(completedPage([{ description: "bnb-b-send-review-request" }]));
     feeds[FEEDS.RED_ICAL_URL] = ics([
       { uid: "a", start: "20261020", end: "20261022" },
@@ -311,7 +359,10 @@ describe("GET /api/calendar: task sync", () => {
 
     expect(addedTasks()).toEqual([]);
     expect(sdk.api.getTasksByFilter.mock.calls.map(([a]) => a.cursor)).toEqual([null, "open-2"]);
-    expect(sdk.api.getCompletedTasksByDueDate.mock.calls.map(([a]) => a.cursor)).toEqual([null, "done-2"]);
+    expect(sdk.api.getCompletedTasksByDueDate.mock.calls.map(([a]) => a.cursor)).toEqual([
+      null,
+      "done-2",
+    ]);
   });
 
   it("asks Todoist for tasks from 5 days back to 33 days ahead", async () => {
@@ -330,9 +381,9 @@ describe("GET /api/calendar: task sync", () => {
     });
   });
 
-  it("only creates tasks for stays that start between today and 30 days out", async () => {
+  it("plans arrival tasks from check-in and the review request from checkout", async () => {
     feeds[FEEDS.WAVESONG_ICAL_URL] = ics([
-      // Already started: check-in was last week
+      // Already started: check-in was last week, checkout is in the window
       { uid: "past", start: "20260930", end: "20261009" },
       // Starts just past the 30-day window
       { uid: "far", start: "20261107", end: "20261110" },
@@ -342,8 +393,25 @@ describe("GET /api/calendar: task sync", () => {
 
     await get();
 
-    const uids = new Set(addedTasks().map((t) => t.description.split("-")[1]));
-    expect(uids).toEqual(new Set(["soon"]));
+    expect(addedTasks().map((t) => t.description)).toEqual([
+      "bnb-past-send-review-request",
+      "bnb-soon-send-welcome-letter",
+      "bnb-soon-send-review-request",
+      "bnb-soon-make-door-code",
+    ]);
+  });
+
+  it("creates no tasks for owner blocks", async () => {
+    feeds[FEEDS.WAVESONG_ICAL_URL] = ics([
+      { uid: "b1", start: "20261020", end: "20261022", summary: "Blocked" },
+      { uid: "b2", start: "20261020", end: "20261022", summary: "Airbnb (Not available)" },
+    ]);
+
+    const { body } = await get();
+
+    expect(addedTasks()).toEqual([]);
+    // They still show on the calendar
+    expect(body.events[0].events).toHaveLength(2);
   });
 
   it("skips individual tasks whose due date falls outside the window", async () => {
@@ -474,14 +542,26 @@ describe("GET /api/calendar: tasks for display", () => {
 
   it("uses an empty due date for tasks without one", async () => {
     sdk.api.getTasks.mockResolvedValue(
-      page([{ id: "x", content: "Buy towels", description: "", completedAt: null, due: null, priority: 1, labels: [] }]),
+      page([
+        {
+          id: "x",
+          content: "Buy towels",
+          description: "",
+          completedAt: null,
+          due: null,
+          priority: 1,
+          labels: [],
+        },
+      ]),
     );
     const { body } = await get();
     expect(body.tasks[0].dueDate).toBe("");
   });
 
   it("still returns the calendar when the task list can't be loaded", async () => {
-    sdk.api.getTasks.mockRejectedValue(Object.assign(new Error("x"), { responseData: "Unauthorized" }));
+    sdk.api.getTasks.mockRejectedValue(
+      Object.assign(new Error("x"), { responseData: "Unauthorized" }),
+    );
     feeds[FEEDS.RED_ICAL_URL] = ics([{ uid: "r", start: "20261020", end: "20261022" }]);
 
     const { status, body } = await get();

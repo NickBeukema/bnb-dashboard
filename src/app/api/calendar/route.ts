@@ -26,13 +26,16 @@ function readConfig() {
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
-  return { feeds: feeds as { property: (typeof feeds)[number]["property"]; url: string }[], token: token! };
+  return {
+    feeds: feeds as { property: (typeof feeds)[number]["property"]; url: string }[],
+    token: token!,
+  };
 }
 
 /**
  * Syncs the booking feeds into Todoist tasks, then returns the bookings and open tasks.
- * Every feed is downloaded before any task is created, so one broken feed can't leave
- * the sync half done.
+ * Every feed is downloaded before any task is created. A feed that can't be read is
+ * reported in `failed` and the others still sync and show.
  */
 async function loadCalendar(): Promise<{ body: object; status: number }> {
   try {
@@ -41,17 +44,21 @@ async function loadCalendar(): Promise<{ body: object; status: number }> {
     const now = new Date();
 
     const existing = await fetchExistingTaskIds(api, now);
-    const sources: CalendarSource[] = await Promise.all(
-      feeds.map(async ({ property, url }) => ({
-        name: property.name,
-        events: await fetchFeed(url, property),
-        color: property.color,
-      })),
-    );
+    const results = await Promise.allSettled(feeds.map(({ url }) => fetchFeed(url)));
 
+    const sources: CalendarSource[] = [];
+    const failed: string[] = [];
     let created = 0;
-    for (const [i, source] of sources.entries()) {
-      const added = await createTasks(api, planTasks(source.events, feeds[i].property, existing, now));
+    for (const [i, result] of results.entries()) {
+      const { property } = feeds[i];
+      if (result.status === "rejected") {
+        console.error(`Error reading the ${property.name} feed:`, result.reason);
+        failed.push(property.name);
+      }
+      const events = result.status === "fulfilled" ? result.value : [];
+      sources.push({ name: property.name, events, color: property.color });
+
+      const added = await createTasks(api, planTasks(events, property, existing, now));
       for (const task of added) existing.add(task.description);
       created += added.length;
     }
@@ -66,7 +73,7 @@ async function loadCalendar(): Promise<{ body: object; status: number }> {
     }
 
     return {
-      body: { events: sources, tasks, lastUpdated: now.toISOString() },
+      body: { events: sources, tasks, failed, lastUpdated: now.toISOString() },
       status: 200,
     };
   } catch (error) {

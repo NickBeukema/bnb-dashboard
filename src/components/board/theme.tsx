@@ -45,6 +45,8 @@ function ModeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem(MODE_KEY);
+    // localStorage only exists after mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setModeState(stored === "light" || stored === "dark" ? stored : "auto");
   }, []);
 
@@ -66,7 +68,9 @@ function ModeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ModeContext.Provider value={{ mode: mode ?? "auto", setMode }}>{children}</ModeContext.Provider>
+    <ModeContext.Provider value={{ mode: mode ?? "auto", setMode }}>
+      {children}
+    </ModeContext.Provider>
   );
 }
 

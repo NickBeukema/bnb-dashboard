@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { CalendarSource, Task } from "@/lib/calendar-types";
+import type { CalendarResponse } from "@/lib/calendar-types";
 import { type BoardData, type BoardTask, toStays, toTasks } from "./model";
 
 const POLL_MS = 5 * 60 * 1000;
@@ -29,25 +29,29 @@ export function useBoard() {
     setStatus((s) => (s === "loading" ? s : "refreshing"));
     try {
       const response = await fetch("/api/calendar", { cache: "no-store" });
-      const json: { events: CalendarSource[]; tasks: Task[]; lastUpdated: string } =
-        await response.json();
+      const json: CalendarResponse = await response.json();
       if (!response.ok) throw new Error();
       // A newer refresh started while this one was in flight; its answer wins
       if (request !== latest.current) return;
       fetchedAt.current = Date.now();
-      setData({
-        stays: toStays(json.events),
+      const failed = json.failed ?? [];
+      setData((prev) => ({
+        // A property whose feed failed keeps the stays from the last sync that read it
+        stays: [
+          ...toStays(json.events),
+          ...(prev?.stays.filter((s) => failed.includes(s.property.name)) ?? []),
+        ].toSorted((a, b) => a.checkIn.getTime() - b.checkIn.getTime()),
         tasks: toTasks(json.tasks),
+        failed,
         lastUpdated: new Date(json.lastUpdated),
-      });
+      }));
       // Stop hiding a task once the sync agrees it's gone, or once the grace period is over
       const listed = new Set(json.tasks.map((t) => t.id));
       setDone((prev) => {
         const next = new Map(
           [...prev].filter(
             ([id, confirmedAt]) =>
-              confirmedAt === null ||
-              (listed.has(id) && startedAt - confirmedAt < HIDE_GRACE_MS),
+              confirmedAt === null || (listed.has(id) && startedAt - confirmedAt < HIDE_GRACE_MS),
           ),
         );
         return next.size === prev.size ? prev : next;
@@ -59,6 +63,8 @@ export function useBoard() {
   }, []);
 
   useEffect(() => {
+    // Loading data on mount; refresh only sets state for the request it starts
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
     const timer = setInterval(refresh, POLL_MS);
     const onVisible = () => {

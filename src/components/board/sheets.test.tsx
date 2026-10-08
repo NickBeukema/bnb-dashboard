@@ -10,12 +10,26 @@ const today = day(7);
 function renderStaySheet(stay: Stay | null, tasks: BoardTask[] = []) {
   const onClose = vi.fn();
   const onCompleteTask = vi.fn();
-  render(<StaySheet stay={stay} today={today} tasks={tasks} onClose={onClose} onCompleteTask={onCompleteTask} />);
+  render(
+    <StaySheet
+      stay={stay}
+      today={today}
+      tasks={tasks}
+      onClose={onClose}
+      onCompleteTask={onCompleteTask}
+    />,
+  );
   return { onClose, onCompleteTask };
 }
 
 describe("StaySheet", () => {
-  const stay = makeStay({ id: "uid-1", property: LAKE_BREEZE, guest: "Nikki", checkIn: day(9), checkOut: day(12) });
+  const stay = makeStay({
+    id: "uid-1",
+    property: LAKE_BREEZE,
+    guest: "Nikki",
+    checkIn: day(9),
+    checkOut: day(12),
+  });
 
   it("stays closed without a stay", () => {
     renderStaySheet(null);
@@ -57,9 +71,10 @@ describe("StaySheet", () => {
   });
 
   it("titles an owner block and leaves out to-dos", async () => {
-    renderStaySheet(makeStay({ id: "b", blocked: true, guest: "Blocked", checkIn: day(9), checkOut: day(10) }), [
-      makeTask({ stayId: "b", due: day(8) }),
-    ]);
+    renderStaySheet(
+      makeStay({ id: "b", blocked: true, guest: "Blocked", checkIn: day(9), checkOut: day(10) }),
+      [makeTask({ stayId: "b", due: day(8) })],
+    );
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Blocked" })).toBeInTheDocument();
     expect(within(dialog).queryByText("To-dos")).toBeNull();
@@ -76,7 +91,13 @@ describe("StaySheet", () => {
 function renderAllTasks(tasks: BoardTask[], open = true) {
   const onOpenChange = vi.fn();
   render(
-    <AllTasksSheet open={open} onOpenChange={onOpenChange} today={today} tasks={tasks} onCompleteTask={vi.fn()} />,
+    <AllTasksSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      today={today}
+      tasks={tasks}
+      onCompleteTask={vi.fn()}
+    />,
   );
   return { onOpenChange };
 }
@@ -107,7 +128,9 @@ describe("AllTasksSheet", () => {
     expect(within(groups[0]).getByText("Overdue one")).toBeInTheDocument();
     expect(within(groups[3]).getByText("Week one")).toBeInTheDocument();
     expect(within(groups[4]).getByText("Later one")).toBeInTheDocument();
-    expect(within(groups[0]).getByRole("heading", { name: "Overdue" })).toHaveClass("text-destructive");
+    expect(within(groups[0]).getByRole("heading", { name: "Overdue" })).toHaveClass(
+      "text-destructive",
+    );
   });
 
   it("shows due days only in the week and later groups", async () => {

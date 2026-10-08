@@ -15,11 +15,9 @@ const EVENTS: CalendarSource[] = [
       {
         id: "stay-1",
         title: "Reserved - Jen",
-        start: "2026-10-09T15:00:00.000Z",
-        end: "2026-10-13T04:00:00.000Z",
-        location: "Wavesong",
-        backgroundColor: "#1e56b0",
-        allDay: true,
+        checkIn: "2026-10-09",
+        checkOut: "2026-10-12",
+        description: null,
       },
     ],
   },
@@ -51,7 +49,12 @@ const LAST_UPDATED = "2026-10-07T20:00:00.000Z";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-const calendarBody = () => ({ events: EVENTS, tasks: TASKS, lastUpdated: LAST_UPDATED });
+const calendarBody = () => ({
+  events: EVENTS,
+  tasks: TASKS,
+  failed: [] as string[],
+  lastUpdated: LAST_UPDATED,
+});
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 
@@ -73,7 +76,11 @@ const calendarCalls = (fn: ReturnType<typeof mockFetch>) =>
 const patchCalls = (fn: ReturnType<typeof mockFetch>) =>
   fn.mock.calls
     .filter(([url]) => String(url).startsWith("/api/task/"))
-    .map(([url, init]) => ({ url: String(url), method: init?.method, body: JSON.parse(String(init?.body)) }));
+    .map(([url, init]) => ({
+      url: String(url),
+      method: init?.method,
+      body: JSON.parse(String(init?.body)),
+    }));
 
 /** Resolvable promise, to hold a request open */
 function deferred<T>() {
@@ -120,7 +127,9 @@ describe("useBoard loading", () => {
   });
 
   it("reports an error when the API answers with a failure", async () => {
-    mockFetch({ calendar: () => json({ error: "Internal Server Error", events: [], tasks: [] }, 500) });
+    mockFetch({
+      calendar: () => json({ error: "Internal Server Error", events: [], tasks: [] }, 500),
+    });
     const { result } = renderHook(() => useBoard());
     await waitFor(() => expect(result.current.status).toBe("error"));
     expect(result.current.data).toBeNull();
@@ -146,6 +155,39 @@ describe("useBoard loading", () => {
     await act(() => result.current.refresh());
     expect(result.current.status).toBe("error");
     expect(result.current.data).toBe(before);
+  });
+
+  it("keeps a property's last known stays while its feed is failing", async () => {
+    const red: CalendarSource = {
+      name: "Red",
+      color: "#ff0000",
+      events: [
+        {
+          id: "red-1",
+          title: "Reserved - Bo",
+          checkIn: "2026-10-05",
+          checkOut: "2026-10-08",
+          description: null,
+        },
+      ],
+    };
+    let body: object = { ...calendarBody(), events: [...EVENTS, red] };
+    mockFetch({ calendar: () => json(body) });
+    const { result } = await renderReady();
+    expect(result.current.data?.failed).toEqual([]);
+
+    // Red's feed fails: the API sends it with no events
+    body = { ...calendarBody(), events: [...EVENTS, { ...red, events: [] }], failed: ["Red"] };
+    await act(() => result.current.refresh());
+    expect(result.current.data?.failed).toEqual(["Red"]);
+    // Still sorted by check-in
+    expect(result.current.data?.stays.map((s) => s.id)).toEqual(["red-1", "stay-1"]);
+
+    // Red is back, and its booking was cancelled meanwhile
+    body = { ...calendarBody(), events: [...EVENTS, { ...red, events: [] }] };
+    await act(() => result.current.refresh());
+    expect(result.current.data?.failed).toEqual([]);
+    expect(result.current.data?.stays.map((s) => s.id)).toEqual(["stay-1"]);
   });
 
   it("shows refreshing (not loading) while a refresh is in flight", async () => {
@@ -333,7 +375,11 @@ describe("useBoard completing tasks", () => {
     expect(result.current.data?.tasks).toHaveLength(2);
 
     await waitFor(() => expect(patchCalls(fetchMock)).toHaveLength(1));
-    expect(patchCalls(fetchMock)[0]).toEqual({ url: "/api/task/t1", method: "PATCH", body: { completed: true } });
+    expect(patchCalls(fetchMock)[0]).toEqual({
+      url: "/api/task/t1",
+      method: "PATCH",
+      body: { completed: true },
+    });
     const [, init] = fetchMock.mock.calls.find(([url]) => String(url) === "/api/task/t1")!;
     expect(init?.headers).toEqual({ "Content-Type": "application/json" });
 
@@ -353,7 +399,11 @@ describe("useBoard completing tasks", () => {
     await act(async () => options.action.onClick());
 
     expect(result.current.tasks.map((t) => t.id)).toEqual(["t1", "t2"]);
-    expect(patchCalls(fetchMock)[1]).toEqual({ url: "/api/task/t1", method: "PATCH", body: { completed: false } });
+    expect(patchCalls(fetchMock)[1]).toEqual({
+      url: "/api/task/t1",
+      method: "PATCH",
+      body: { completed: false },
+    });
     expect(toast.error).not.toHaveBeenCalled();
   });
 
@@ -453,7 +503,7 @@ describe("useBoard completing tasks", () => {
   });
 });
 
-describe("describe", () => {
+describe("describeTask", () => {
   const base: BoardTask = {
     id: "x",
     kind: "review",
@@ -469,6 +519,8 @@ describe("describe", () => {
   });
 
   it("falls back to the title", () => {
-    expect(describeTask({ ...base, kind: "other", title: "Buy coffee", guest: null })).toBe("Buy coffee");
+    expect(describeTask({ ...base, kind: "other", title: "Buy coffee", guest: null })).toBe(
+      "Buy coffee",
+    );
   });
 });

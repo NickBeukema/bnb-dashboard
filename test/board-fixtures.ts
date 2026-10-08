@@ -1,7 +1,12 @@
 // Builders shared by the board component tests. Dates are local (America/New_York in tests).
 import { PROPERTIES, type BoardTask, type Property, type Stay } from "@/components/board/model";
 
-export const [WAVESONG, RED, LAKE_BREEZE, NAUTICAL_NEST] = PROPERTIES as [Property, Property, Property, Property];
+export const [WAVESONG, RED, LAKE_BREEZE, NAUTICAL_NEST] = PROPERTIES as [
+  Property,
+  Property,
+  Property,
+  Property,
+];
 
 /** Local midnight on a day in October 2026 unless a month is given (1-based) */
 export const day = (d: number, month = 10, year = 2026) => new Date(year, month - 1, d);

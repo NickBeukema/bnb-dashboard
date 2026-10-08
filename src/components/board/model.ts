@@ -1,12 +1,6 @@
 import type { CSSProperties } from "react";
-import {
-  differenceInCalendarDays,
-  isBefore,
-  parseISO,
-  startOfDay,
-  subHours,
-} from "date-fns";
-import type { CalendarSource, Task } from "@/lib/calendar-types";
+import { differenceInCalendarDays, isBefore, parseISO, startOfDay } from "date-fns";
+import { type CalendarSource, isBlocked, type Task } from "@/lib/calendar-types";
 import { PROPERTY_CONFIG } from "@/lib/properties";
 
 export type Property = {
@@ -62,6 +56,8 @@ export type BoardTask = {
 export type BoardData = {
   stays: Stay[];
   tasks: BoardTask[];
+  /** Properties whose feed failed on the last sync; their stays are from an earlier one */
+  failed: string[];
   lastUpdated: Date;
 };
 
@@ -71,23 +67,22 @@ export function toStays(sources: CalendarSource[]): Stay[] {
   return sources
     .flatMap((source) =>
       source.events.map((event): Stay => {
-        // The API shifts all-day events for the old calendar: `start` is check-in day at
-        // 11:00 and `end` is the midnight after checkout. Undo that into plain local days.
-        const checkIn = startOfDay(parseISO(event.start));
-        const checkOut = startOfDay(subHours(parseISO(event.end), 12));
+        // `yyyy-MM-dd` parses as local midnight
+        const checkIn = parseISO(event.checkIn);
+        const checkOut = parseISO(event.checkOut);
         const guest = guestFromTitle(event.title);
         return {
           id: event.id,
           property: propertyByName(source.name),
           guest: guest || "Reserved",
-          blocked: /^blocked\b|not available/i.test(event.title),
+          blocked: isBlocked(event.title),
           checkIn,
           checkOut,
           nights: differenceInCalendarDays(checkOut, checkIn),
         };
       }),
     )
-    .sort((a, b) => a.checkIn.getTime() - b.checkIn.getTime());
+    .toSorted((a, b) => a.checkIn.getTime() - b.checkIn.getTime());
 }
 
 const TASK_ID = /^bnb-(.+)-(send-welcome-letter|send-review-request|make-door-code)$/;
@@ -125,7 +120,7 @@ export function toTasks(tasks: Task[]): BoardTask[] {
         due: startOfDay(parseISO(task.dueDate)),
       };
     })
-    .sort((a, b) => a.due.getTime() - b.due.getTime());
+    .toSorted((a, b) => a.due.getTime() - b.due.getTime());
 }
 
 export const isOverdue = (task: BoardTask, today: Date) => isBefore(task.due, today);

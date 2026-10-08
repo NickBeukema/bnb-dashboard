@@ -1,7 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { LAKE_BREEZE, NAUTICAL_NEST, RED, WAVESONG, day, makeStay } from "../../../test/board-fixtures";
+import {
+  LAKE_BREEZE,
+  NAUTICAL_NEST,
+  RED,
+  WAVESONG,
+  day,
+  makeStay,
+} from "../../../test/board-fixtures";
 import type { Stay } from "./model";
 import { StayCalendar, StayCalendarSkeleton } from "./stay-calendar";
 
@@ -79,7 +86,8 @@ describe("StayCalendar", () => {
 
   it("won't hide the last property", async () => {
     const { user, lanes } = renderCalendar();
-    for (const name of ["Wavesong", "Red", "Lake Breeze"]) await user.click(screen.getByRole("button", { name }));
+    for (const name of ["Wavesong", "Red", "Lake Breeze"])
+      await user.click(screen.getByRole("button", { name }));
     const last = screen.getByRole("button", { name: "Nautical Nest" });
     await user.click(last);
     expect(last).toHaveAttribute("aria-pressed", "true");
@@ -87,8 +95,12 @@ describe("StayCalendar", () => {
   });
 
   it("gives each stay an accessible bar", () => {
-    renderCalendar([makeStay({ property: RED, guest: "Dennis", checkIn: day(15), checkOut: day(17) })]);
-    expect(screen.getByRole("button", { name: "Dennis, Red, Oct 15 to Oct 17" })).toHaveTextContent("Dennis");
+    renderCalendar([
+      makeStay({ property: RED, guest: "Dennis", checkIn: day(15), checkOut: day(17) }),
+    ]);
+    expect(screen.getByRole("button", { name: "Dennis, Red, Oct 15 to Oct 17" })).toHaveTextContent(
+      "Dennis",
+    );
   });
 
   it("splits a stay that crosses a week into one bar per week", () => {
@@ -124,14 +136,21 @@ describe("StayCalendar", () => {
   });
 
   it("opens a stay from its bar", async () => {
-    const stay = makeStay({ property: NAUTICAL_NEST, guest: "George", checkIn: day(12), checkOut: day(16) });
+    const stay = makeStay({
+      property: NAUTICAL_NEST,
+      guest: "George",
+      checkIn: day(12),
+      checkOut: day(16),
+    });
     const { user, onSelectStay } = renderCalendar([stay]);
     await user.click(screen.getByRole("button", { name: /^George,/ }));
     expect(onSelectStay).toHaveBeenCalledExactlyOnceWith(stay);
   });
 
   it("labels owner blocks as Blocked", () => {
-    renderCalendar([makeStay({ blocked: true, guest: "Not available", checkIn: day(13), checkOut: day(14) })]);
+    renderCalendar([
+      makeStay({ blocked: true, guest: "Not available", checkIn: day(13), checkOut: day(14) }),
+    ]);
     const bar = screen.getByRole("button", { name: "Blocked, Wavesong, Oct 13 to Oct 14" });
     expect(bar).toHaveTextContent("Blocked");
     expect(bar).toHaveClass("stripes");

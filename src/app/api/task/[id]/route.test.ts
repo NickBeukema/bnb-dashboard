@@ -93,7 +93,9 @@ describe("PATCH /api/task/[id]", () => {
   });
 
   it("returns 500 with Todoist's response when the call throws", async () => {
-    sdk.api.reopenTask.mockRejectedValue(Object.assign(new Error("Request failed"), { responseData: "Task not found" }));
+    sdk.api.reopenTask.mockRejectedValue(
+      Object.assign(new Error("Request failed"), { responseData: "Task not found" }),
+    );
     const { status, body } = await patch({ completed: false });
     expect(status).toBe(500);
     expect(body).toEqual({ error: "Error updating task", details: "Task not found" });

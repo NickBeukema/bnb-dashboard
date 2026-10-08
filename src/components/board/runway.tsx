@@ -107,7 +107,10 @@ function Day({
             {tasks.length > 0 && (
               <div>
                 {turnovers.length > 0 && <div aria-hidden className="mx-2 mb-2 border-t" />}
-                <ul aria-label={`To-dos ${dayName(index, day).toLowerCase()}`} className="flex flex-col">
+                <ul
+                  aria-label={`To-dos ${dayName(index, day).toLowerCase()}`}
+                  className="flex flex-col"
+                >
                   {tasks.map((task) => (
                     <TaskRow key={task.id} task={task} today={today} onComplete={onCompleteTask} />
                   ))}
@@ -174,7 +177,7 @@ export function RunwaySkeleton({ className }: { className?: string }) {
       {Array.from({ length: DAYS }, (_, i) => (
         <div key={i} className="flex flex-col gap-4 rounded-3xl p-5 ring-1 ring-border">
           <Skeleton className="h-8 w-32" />
-          {Array.from({ length: 4 - i }, (_, j) => (
+          {Array.from({ length: 4 - i }, (__, j) => (
             <div key={j} className="flex flex-col gap-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-6 w-40" />

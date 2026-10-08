@@ -78,14 +78,17 @@ describe("BoardThemeProvider and ThemeModeToggle", () => {
     await waitFor(() => expect(html).toHaveClass("dark"));
   });
 
-  it.each(["light", "dark"] as const)("honours a stored %s mode regardless of the time", async (mode) => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(mode === "light" ? at(23, 0) : at(12, 0));
-    localStorage.setItem("bnb-theme-mode", mode);
-    renderToggle();
-    await waitFor(() => expect(html).toHaveClass(mode));
-    expect(option(new RegExp(`^${mode}$`, "i"))).toBeChecked();
-  });
+  it.each(["light", "dark"] as const)(
+    "honours a stored %s mode regardless of the time",
+    async (mode) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(mode === "light" ? at(23, 0) : at(12, 0));
+      localStorage.setItem("bnb-theme-mode", mode);
+      renderToggle();
+      await waitFor(() => expect(html).toHaveClass(mode));
+      expect(option(new RegExp(`^${mode}$`, "i"))).toBeChecked();
+    },
+  );
 
   it("never flashes the auto theme before a stored mode is read", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });

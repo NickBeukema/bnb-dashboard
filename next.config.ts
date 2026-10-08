@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The board lives at /v3 (the kiosk's URL); send the bare address there too
+  // The board used to live at /v3; keep old bookmarks working
   async redirects() {
-    return [{ source: "/", destination: "/v3", permanent: false }];
+    return [{ source: "/v3", destination: "/", permanent: false }];
   },
 };
 

@@ -5,7 +5,13 @@ import { cn } from "@/lib/utils";
 import { type Property, propertyStyle } from "./model";
 
 /** A property's color. The inset ring keeps light colors (Nautical Nest's gold) visible on white. */
-export function PropertySwatch({ property, className }: { property: Property; className?: string }) {
+export function PropertySwatch({
+  property,
+  className,
+}: {
+  property: Property;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden
@@ -32,6 +38,8 @@ export function PropertyName({ property, className }: { property: Property; clas
 export function useNow(intervalMs = 15_000) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    // Set after mount on purpose, so the server render and hydration agree
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), intervalMs);
     return () => clearInterval(timer);

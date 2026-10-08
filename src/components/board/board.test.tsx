@@ -25,7 +25,12 @@ function mockBoard(state: Partial<BoardState>) {
 
 const stay = makeStay({ id: "s1", guest: "Amber", checkIn: day(7), checkOut: day(10) });
 const tasks = [makeTask({ due: day(7), title: "Door code", kind: "door-code", stayId: "s1" })];
-const data: BoardData = { stays: [stay], tasks, lastUpdated: new Date(2026, 9, 7, 20, 50) };
+const data: BoardData = {
+  stays: [stay],
+  tasks,
+  failed: [],
+  lastUpdated: new Date(2026, 9, 7, 20, 50),
+};
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -78,12 +83,22 @@ describe("Board", () => {
     expect(screen.getByRole("button", { name: "Refresh now" })).toBeEnabled();
   });
 
+  it("names the properties whose feed failed", () => {
+    mockBoard({ status: "ready", data: { ...data, failed: ["Red", "Lake Breeze"] }, tasks });
+    render(<Board />);
+    expect(screen.getByText("Couldn't reach Red and Lake Breeze. Updated 8:50 PM")).toHaveClass(
+      "text-destructive",
+    );
+  });
+
   it("puts the calendar above the next three days", () => {
     mockBoard({ status: "ready", data, tasks });
     render(<Board />);
     const calendar = screen.getByRole("heading", { name: "October 2026" });
     const runway = screen.getByRole("region", { name: "Today" });
-    expect(calendar.compareDocumentPosition(runway) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      calendar.compareDocumentPosition(runway) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("spins the refresh button while refreshing", () => {

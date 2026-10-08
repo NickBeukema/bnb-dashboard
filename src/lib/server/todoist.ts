@@ -82,5 +82,5 @@ export async function fetchOpenTasks(api: TodoistApi): Promise<Task[]> {
       priority: task.priority,
       labels: task.labels,
     }))
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    .toSorted((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 }

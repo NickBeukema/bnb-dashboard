@@ -66,12 +66,18 @@ export function StaySheet({
                 <h3 className="px-2 text-lg font-semibold">To-dos</h3>
                 {own.length === 0 ? (
                   <p className="px-2 py-2 text-muted-foreground">
-                    Nothing open for this stay. To-dos appear here once they're within a month.
+                    {"Nothing open for this stay. To-dos appear here once they're within a month."}
                   </p>
                 ) : (
                   <ul className="mt-1 flex flex-col">
                     {own.map((task) => (
-                      <TaskRow key={task.id} task={task} today={today} onComplete={onCompleteTask} showDue />
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        today={today}
+                        onComplete={onCompleteTask}
+                        showDue
+                      />
                     ))}
                   </ul>
                 )}
@@ -129,13 +135,21 @@ export function AllTasksSheet({
           <DrawerHeader className="text-left">
             <DrawerTitle className="text-3xl font-semibold tracking-tight">All to-dos</DrawerTitle>
             <DrawerDescription className="text-base">
-              {tasks.length === 0 ? "You're all caught up." : `${tasks.length} open, soonest first.`}
+              {tasks.length === 0
+                ? "You're all caught up."
+                : `${tasks.length} open, soonest first.`}
             </DrawerDescription>
           </DrawerHeader>
           <ScrollArea className="min-h-0 flex-1 px-4">
             {[...groups].map(([name, items]) => (
               <section key={name} aria-label={name} className="mb-4">
-                <h3 className={name === "Overdue" ? "px-2 font-semibold text-destructive" : "px-2 font-semibold"}>
+                <h3
+                  className={
+                    name === "Overdue"
+                      ? "px-2 font-semibold text-destructive"
+                      : "px-2 font-semibold"
+                  }
+                >
                   {name}
                 </h3>
                 <ul className="flex flex-col">

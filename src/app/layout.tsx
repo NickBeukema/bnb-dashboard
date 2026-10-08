@@ -24,7 +24,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <BoardThemeProvider>
           {children}
-          <Toaster position="bottom-center" toastOptions={{ classNames: { toast: "cn-toast text-base!" } }} />
+          <Toaster
+            position="bottom-center"
+            toastOptions={{ classNames: { toast: "cn-toast text-base!" } }}
+          />
         </BoardThemeProvider>
       </body>
     </html>

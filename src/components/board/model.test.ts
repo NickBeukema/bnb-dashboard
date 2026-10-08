@@ -16,18 +16,20 @@ import {
 // Local calendar days in the test timezone (America/New_York)
 const day = (y: number, m: number, d: number) => new Date(y, m - 1, d);
 
-/** An event as the API sends it: start is check-in + 11h, end is the midnight after checkout + 24h */
+/** An event as the API sends it: plain local check-in and checkout days */
 const apiEvent = (overrides: Partial<CalendarEvent> & { id: string }): CalendarEvent => ({
   title: "Reserved - Jen",
-  start: "2026-10-09T15:00:00.000Z",
-  end: "2026-10-13T04:00:00.000Z",
-  location: "Wavesong",
-  backgroundColor: "#1e56b0",
-  allDay: true,
+  checkIn: "2026-10-09",
+  checkOut: "2026-10-12",
+  description: null,
   ...overrides,
 });
 
-const source = (name: string, events: CalendarEvent[]): CalendarSource => ({ name, events, color: "#000" });
+const source = (name: string, events: CalendarEvent[]): CalendarSource => ({
+  name,
+  events,
+  color: "#000",
+});
 
 const task = (overrides: Partial<Task> & { id: string }): Task => ({
   name: "Send Welcome Letter (Reserved - Jen)",
@@ -51,7 +53,12 @@ const stay = (overrides: Partial<Stay> & { id: string }): Stay => ({
 
 describe("PROPERTIES", () => {
   it("lists the four properties in lane order", () => {
-    expect(PROPERTIES.map((p) => p.name)).toEqual(["Wavesong", "Red", "Lake Breeze", "Nautical Nest"]);
+    expect(PROPERTIES.map((p) => p.name)).toEqual([
+      "Wavesong",
+      "Red",
+      "Lake Breeze",
+      "Nautical Nest",
+    ]);
     expect(PROPERTIES.map((p) => p.initial)).toEqual(["W", "R", "L", "N"]);
   });
 });
@@ -62,11 +69,19 @@ describe("propertyByName", () => {
   });
 
   it("falls back to a muted property that keeps the unknown name", () => {
-    expect(propertyByName("Betsie")).toEqual({ name: "Betsie", token: "muted-foreground", initial: "?" });
+    expect(propertyByName("Betsie")).toEqual({
+      name: "Betsie",
+      token: "muted-foreground",
+      initial: "?",
+    });
   });
 
   it('calls a missing name "Other"', () => {
-    expect(propertyByName(undefined)).toEqual({ name: "Other", token: "muted-foreground", initial: "?" });
+    expect(propertyByName(undefined)).toEqual({
+      name: "Other",
+      token: "muted-foreground",
+      initial: "?",
+    });
   });
 });
 
@@ -80,9 +95,7 @@ describe("propertyStyle", () => {
 });
 
 describe("toStays", () => {
-  it("undoes the API's date shift into local check-in and checkout days", () => {
-    // Check-in Fri Oct 9 (DTSTART 2026-10-09 00:00 local → +11h), checkout Mon Oct 12
-    // (DTEND 2026-10-12 00:00 local → +24h)
+  it("reads check-in and checkout as local days", () => {
     const [s] = toStays([source("Wavesong", [apiEvent({ id: "a" })])]);
     expect(s.checkIn).toEqual(day(2026, 10, 9));
     expect(s.checkOut).toEqual(day(2026, 10, 12));
@@ -91,18 +104,46 @@ describe("toStays", () => {
     expect(s.property).toBe(PROPERTIES[0]);
   });
 
-  it("handles a real event built the way the API builds it", () => {
-    const dtstart = new Date(2026, 9, 20); // local midnight
-    const dtend = new Date(2026, 9, 22);
-    const event = apiEvent({
-      id: "real",
-      start: new Date(dtstart.getTime() + 11 * 3600_000).toISOString(),
-      end: new Date(dtend.getTime() + 24 * 3600_000).toISOString(),
-    });
-    const [s] = toStays([source("Red", [event])]);
-    expect(s.checkIn).toEqual(day(2026, 10, 20));
-    expect(s.checkOut).toEqual(day(2026, 10, 22));
-    expect(s.nights).toBe(2);
+  // The old API sent shifted timestamps, and the old calendar popup showed the wrong checkout
+  // when the clocks fell back on checkout day (seen on a real Nov 1→2, 2025 stay)
+  it.each([
+    [
+      "clocks fall back on checkout day",
+      "2026-10-31",
+      "2026-11-01",
+      day(2026, 10, 31),
+      day(2026, 11, 1),
+      1,
+    ],
+    [
+      "clocks fall back mid-stay",
+      "2026-10-30",
+      "2026-11-02",
+      day(2026, 10, 30),
+      day(2026, 11, 2),
+      3,
+    ],
+    [
+      "clocks spring forward on checkout day",
+      "2027-03-13",
+      "2027-03-14",
+      day(2027, 3, 13),
+      day(2027, 3, 14),
+      1,
+    ],
+    [
+      "clocks spring forward on check-in day",
+      "2027-03-14",
+      "2027-03-16",
+      day(2027, 3, 14),
+      day(2027, 3, 16),
+      2,
+    ],
+  ])("keeps the real days when the %s", (_, checkIn, checkOut, expectedIn, expectedOut, nights) => {
+    const [s] = toStays([source("Wavesong", [apiEvent({ id: "dst", checkIn, checkOut })])]);
+    expect(s.checkIn).toEqual(expectedIn);
+    expect(s.checkOut).toEqual(expectedOut);
+    expect(s.nights).toBe(nights);
   });
 
   it("parses the guest from the title", () => {
@@ -115,7 +156,13 @@ describe("toStays", () => {
         apiEvent({ id: "5", title: "Owner stay" }),
       ]),
     ]);
-    expect(stays.map((s) => s.guest)).toEqual(["Jen", "Ann Marie", "Reserved", "Reserved", "Owner stay"]);
+    expect(stays.map((s) => s.guest)).toEqual([
+      "Jen",
+      "Ann Marie",
+      "Reserved",
+      "Reserved",
+      "Owner stay",
+    ]);
   });
 
   it("detects owner blocks", () => {
@@ -133,8 +180,8 @@ describe("toStays", () => {
 
   it("sorts stays across sources by check-in", () => {
     const stays = toStays([
-      source("Wavesong", [apiEvent({ id: "late", start: "2026-10-20T15:00:00.000Z", end: "2026-10-23T04:00:00.000Z" })]),
-      source("Red", [apiEvent({ id: "early", start: "2026-10-02T15:00:00.000Z", end: "2026-10-05T04:00:00.000Z" })]),
+      source("Wavesong", [apiEvent({ id: "late", checkIn: "2026-10-20", checkOut: "2026-10-23" })]),
+      source("Red", [apiEvent({ id: "early", checkIn: "2026-10-02", checkOut: "2026-10-05" })]),
       source("Lake Breeze", [apiEvent({ id: "mid" })]),
     ]);
     expect(stays.map((s) => s.id)).toEqual(["early", "mid", "late"]);
@@ -221,7 +268,13 @@ describe("toTasks", () => {
     const [t] = toTasks([
       task({ id: "o", name: "Buy coffee (the good one)", description: "", labels: [] }),
     ]);
-    expect(t).toMatchObject({ kind: "other", title: "Buy coffee (the good one)", guest: null, stayId: null, property: null });
+    expect(t).toMatchObject({
+      kind: "other",
+      title: "Buy coffee (the good one)",
+      guest: null,
+      stayId: null,
+      property: null,
+    });
   });
 
   it("treats a description that only looks like a task id as other", () => {
@@ -280,8 +333,18 @@ describe("movementsOn", () => {
 
   it("lists departures and arrivals per property", () => {
     const leaving = stay({ id: "out", checkIn: day(2026, 10, 5), checkOut: today });
-    const arriving = stay({ id: "in", property: propertyByName("Red"), checkIn: today, checkOut: day(2026, 10, 12) });
-    const elsewhere = stay({ id: "x", property: propertyByName("Lake Breeze"), checkIn: day(2026, 10, 8), checkOut: day(2026, 10, 11) });
+    const arriving = stay({
+      id: "in",
+      property: propertyByName("Red"),
+      checkIn: today,
+      checkOut: day(2026, 10, 12),
+    });
+    const elsewhere = stay({
+      id: "x",
+      property: propertyByName("Lake Breeze"),
+      checkIn: day(2026, 10, 8),
+      checkOut: day(2026, 10, 11),
+    });
     expect(movementsOn(today, [leaving, arriving, elsewhere])).toEqual([
       { property: PROPERTIES[0], out: leaving, in: null },
       { property: PROPERTIES[1], out: null, in: arriving },
@@ -291,7 +354,9 @@ describe("movementsOn", () => {
   it("pairs a same-day turnover at one property", () => {
     const out = stay({ id: "out", checkIn: day(2026, 10, 5), checkOut: today });
     const arriving = stay({ id: "in", checkIn: today, checkOut: day(2026, 10, 12) });
-    expect(movementsOn(today, [arriving, out])).toEqual([{ property: PROPERTIES[0], out, in: arriving }]);
+    expect(movementsOn(today, [arriving, out])).toEqual([
+      { property: PROPERTIES[0], out, in: arriving },
+    ]);
   });
 
   it("ignores owner blocks", () => {
@@ -302,7 +367,10 @@ describe("movementsOn", () => {
   it("follows PROPERTIES order, not stay order", () => {
     const nest = stay({ id: "n", property: propertyByName("Nautical Nest"), checkIn: today });
     const wave = stay({ id: "w", property: propertyByName("Wavesong"), checkIn: today });
-    expect(movementsOn(today, [nest, wave]).map((t) => t.property.name)).toEqual(["Wavesong", "Nautical Nest"]);
+    expect(movementsOn(today, [nest, wave]).map((t) => t.property.name)).toEqual([
+      "Wavesong",
+      "Nautical Nest",
+    ]);
   });
 
   it("matches by calendar day, ignoring the time of day", () => {
@@ -311,7 +379,9 @@ describe("movementsOn", () => {
   });
 
   it("ignores stays at properties outside PROPERTIES", () => {
-    expect(movementsOn(today, [stay({ id: "s", property: propertyByName("Betsie"), checkIn: today })])).toEqual([]);
+    expect(
+      movementsOn(today, [stay({ id: "s", property: propertyByName("Betsie"), checkIn: today })]),
+    ).toEqual([]);
   });
 });
 

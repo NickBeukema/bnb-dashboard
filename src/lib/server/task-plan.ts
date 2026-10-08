@@ -1,5 +1,13 @@
-import { addDays, endOfDay, isWithinInterval, startOfDay, subDays } from "date-fns";
-import type { CalendarEvent } from "@/lib/calendar-types";
+import {
+  addDays,
+  endOfDay,
+  isWithinInterval,
+  parseISO,
+  setHours,
+  startOfDay,
+  subDays,
+} from "date-fns";
+import { type CalendarEvent, isBlocked } from "@/lib/calendar-types";
 import type { PropertyConfig } from "@/lib/properties";
 
 /** How far ahead stays (and their tasks) are synced into Todoist */
@@ -9,13 +17,23 @@ type TaskType = {
   name: string;
   /** Only properties with smart locks need a door code */
   needsDoorCode?: boolean;
+  /** The stay day the task hangs off. It must fall in the sync window for the task to be planned. */
+  anchor: (event: CalendarEvent) => Date;
   due: (event: CalendarEvent) => Date;
 };
 
+// Both are local midnight, parsed from `yyyy-MM-dd`
+const checkIn = (e: CalendarEvent) => parseISO(e.checkIn);
+const checkOut = (e: CalendarEvent) => parseISO(e.checkOut);
+// 11:00, three days before check-in
+const beforeArrival = (e: CalendarEvent) => setHours(subDays(checkIn(e), 3), 11);
+
 export const TASK_TYPES: TaskType[] = [
-  { name: "Send Welcome Letter", due: (e) => subDays(new Date(e.start), 3) },
-  { name: "Send Review Request", due: (e) => addDays(new Date(e.end), 2) },
-  { name: "Make Door Code", needsDoorCode: true, due: (e) => subDays(new Date(e.start), 3) },
+  { name: "Send Welcome Letter", anchor: checkIn, due: beforeArrival },
+  // Anchored on checkout, so stays that began before today (or long stays) still get one.
+  // Due at the start of the third day after checkout.
+  { name: "Send Review Request", anchor: checkOut, due: (e) => addDays(checkOut(e), 3) },
+  { name: "Make Door Code", needsDoorCode: true, anchor: checkIn, due: beforeArrival },
 ];
 
 /**
@@ -32,7 +50,7 @@ export type NewTask = {
   labels: string[];
 };
 
-/** Today through SYNC_DAYS out: stays starting in it get tasks, and tasks must fall in it */
+/** Today through SYNC_DAYS out: a task's anchor day and its due date must both fall in it */
 export const syncWindow = (now: Date) => ({
   start: startOfDay(now),
   end: endOfDay(addDays(now, SYNC_DAYS)),
@@ -41,6 +59,7 @@ export const syncWindow = (now: Date) => ({
 /**
  * Which tasks one property's events still need. Pure: `existing` holds the ids of every task
  * already in Todoist (open or completed), and nothing is created twice within one plan.
+ * Owner blocks get no tasks.
  */
 export function planTasks(
   events: CalendarEvent[],
@@ -53,10 +72,11 @@ export function planTasks(
   const tasks: NewTask[] = [];
 
   for (const event of events) {
-    if (!isWithinInterval(new Date(event.start), window)) continue;
+    if (isBlocked(event.title)) continue;
 
     for (const type of TASK_TYPES) {
       if (type.needsDoorCode && !property.doorCode) continue;
+      if (!isWithinInterval(type.anchor(event), window)) continue;
 
       const id = taskId(event.id, type.name);
       if (existing.has(id) || planned.has(id)) continue;
