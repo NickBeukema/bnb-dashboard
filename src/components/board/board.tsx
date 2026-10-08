@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format, startOfDay } from "date-fns";
+import { format, isToday, startOfDay } from "date-fns";
 import { ListTodoIcon, RotateCwIcon, TriangleAlertIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { AllTasksSheet, StaySheet } from "./sheets";
 import { StayAgenda } from "./stay-agenda";
 import { StayCalendar, StayCalendarSkeleton } from "./stay-calendar";
 import { ThemeModeToggle } from "./theme";
-import { useBoard } from "./use-board";
+import { type Status, useBoard } from "./use-board";
 
 export function Board() {
   const now = useNow();
@@ -150,26 +150,30 @@ function SyncStatus({
   failed,
   onRefresh,
 }: {
-  status: string;
+  status: Status;
   lastUpdated: Date | null;
   failed: string[];
   onRefresh: () => void;
 }) {
   const busy = status === "loading" || status === "refreshing";
-  const warn = status === "error" || failed.length > 0;
+  const warn = status === "error" || status === "offline" || failed.length > 0;
+  // An offline copy can be days old
+  const stamp = (d: Date) => format(d, isToday(d) ? "h:mm a" : "MMM d, h:mm a");
   return (
     <div className="flex items-center gap-1">
       <p
         aria-live="polite"
         className={cn("text-sm tabular-nums", warn ? "text-destructive" : "text-muted-foreground")}
       >
-        {status === "error" && lastUpdated
-          ? `Couldn't refresh. Showing ${format(lastUpdated, "h:mm a")}`
-          : lastUpdated && failed.length > 0
-            ? `Couldn't reach ${listFormat.format(failed)}. Updated ${format(lastUpdated, "h:mm a")}`
-            : lastUpdated
-              ? `Updated ${format(lastUpdated, "h:mm a")}`
-              : "Loading…"}
+        {status === "offline" && lastUpdated
+          ? `Offline. Showing ${stamp(lastUpdated)}`
+          : status === "error" && lastUpdated
+            ? `Couldn't refresh. Showing ${stamp(lastUpdated)}`
+            : lastUpdated && failed.length > 0
+              ? `Couldn't reach ${listFormat.format(failed)}. Updated ${stamp(lastUpdated)}`
+              : lastUpdated
+                ? `Updated ${stamp(lastUpdated)}`
+                : "Loading…"}
       </p>
       <Button
         variant="ghost"

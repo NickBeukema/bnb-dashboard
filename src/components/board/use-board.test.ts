@@ -524,3 +524,35 @@ describe("describeTask", () => {
     );
   });
 });
+
+describe("useBoard offline", () => {
+  const offlineCopy = () =>
+    new Response(JSON.stringify(calendarBody()), {
+      headers: { "Content-Type": "application/json", "X-Board-Offline": "1" },
+    });
+
+  it("shows the service worker's last copy as offline", async () => {
+    mockFetch({ calendar: offlineCopy });
+    const { result } = renderHook(() => useBoard());
+    await waitFor(() => expect(result.current.status).toBe("offline"));
+    expect(result.current.data?.stays.map((s) => s.guest)).toEqual(["Jen"]);
+    expect(result.current.data?.lastUpdated).toEqual(new Date(LAST_UPDATED));
+  });
+
+  it("refreshes as soon as the connection comes back", async () => {
+    let offline = true;
+    const fetchMock = mockFetch({
+      calendar: () => (offline ? offlineCopy() : json(calendarBody())),
+    });
+    const { result } = renderHook(() => useBoard());
+    await waitFor(() => expect(result.current.status).toBe("offline"));
+
+    offline = false;
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(calendarCalls(fetchMock)).toBe(2);
+  });
+});

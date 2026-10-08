@@ -81,6 +81,7 @@ initial and door-code rule live together in `src/lib/properties.ts`.
 | `npm run typecheck`               | Runs `tsc --noEmit`.                                            |
 | `npm run lint`                    | Lints with oxlint (`.oxlintrc.json`).                           |
 | `npm run format` / `format:check` | Formats with oxfmt (`.oxfmtrc.json`), or checks the formatting. |
+| `npm run icons`                   | Redraws the app icons in `public/icons/`.                       |
 
 ## Tests
 
@@ -97,7 +98,7 @@ The tests sit next to the code as `*.test.ts(x)` files. Shared setup and fixture
 ## Code map
 
 ```
-src/app/                  layout, globals.css (Tailwind and the shadcn theme), board page
+src/app/                  layout, globals.css (Tailwind and the shadcn theme), board page, manifest
 src/app/api/              calendar sync and task routes
 src/components/board/     board UI, model.ts (API → stays/tasks), use-board.ts (data and polling)
 src/components/ui/        shadcn components
@@ -105,7 +106,26 @@ src/lib/properties.ts     the four properties
 src/lib/calendar-types.ts API response types shared by server and client
 src/lib/server/           iCal parsing, task planning (pure) and Todoist calls
 deploy/                   the Pi's systemd unit and deploy script
+public/sw.js              service worker (offline copy of the board)
+scripts/make-icons.mts    draws the app icons
 ```
+
+## Installing on a phone
+
+The board is a Progressive Web App: it can be added to a phone's home screen and opens full
+screen like an app.
+
+- **Install:** on iPhone, open the board in Safari, tap Share, then **Add to Home Screen**. On
+  Android, open it in Chrome and tap **Install app** in the menu.
+- **HTTPS:** browsers only run the service worker, and Android only offers to install, over
+  HTTPS (or on `localhost`, which is why the TV has it). The phone reaches the Pi through
+  Tailscale, so serve the board over HTTPS with Tailscale (see [Deployment](#deployment-raspberry-pi)).
+- **Offline:** the service worker ([`public/sw.js`](public/sw.js)) keeps the last board it
+  loaded. With no connection, the board opens from that copy and the footer reads "Offline.
+  Showing <time>". Ticking tasks off needs the connection.
+- **Updates:** pages and data always come from the network first, so a deploy shows up on the
+  next load. Bump `VERSION` in `sw.js` only when changing how it caches.
+- **Icons:** drawn by `npm run icons` from the property colours.
 
 ## Deployment (Raspberry Pi)
 
@@ -133,6 +153,10 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
   ```
 
 - **Logs:** `journalctl -u bnb-dashboard.service -f`.
+- **HTTPS for phones:** with HTTPS certificates enabled for the tailnet (Tailscale admin console,
+  DNS page), run `sudo tailscale serve --bg 3000` once on the Pi. The board is then at
+  `https://raspberrypi.tail1f7a99.ts.net/` for any device signed in to the tailnet. The setting
+  survives reboots.
 - **Kiosk:** `~/.local/bin/kiosk.sh` keeps Chromium open on `http://localhost:3000/` and
   relaunches it if it exits.
   - To reload the TV, run `pkill -x chromium`.

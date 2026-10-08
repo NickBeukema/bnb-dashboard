@@ -12,7 +12,8 @@ const STALE_MS = 60 * 1000;
 // and Todoist itself can lag). After that, a listed task is trusted, e.g. reopened in Todoist.
 const HIDE_GRACE_MS = 2 * 60 * 1000;
 
-type Status = "loading" | "ready" | "refreshing" | "error";
+/** `offline`: no connection, showing the last board the service worker kept */
+export type Status = "loading" | "ready" | "refreshing" | "error" | "offline";
 
 export function useBoard() {
   const [data, setData] = useState<BoardData | null>(null);
@@ -33,7 +34,9 @@ export function useBoard() {
       if (!response.ok) throw new Error();
       // A newer refresh started while this one was in flight; its answer wins
       if (request !== latest.current) return;
-      fetchedAt.current = Date.now();
+      // public/sw.js answers with its last copy when the network is down
+      const offline = response.headers.get("X-Board-Offline") === "1";
+      if (!offline) fetchedAt.current = Date.now();
       const failed = json.failed ?? [];
       setData((prev) => ({
         // A property whose feed failed keeps the stays from the last sync that read it
@@ -45,6 +48,11 @@ export function useBoard() {
         failed,
         lastUpdated: new Date(json.lastUpdated),
       }));
+      if (offline) {
+        // An old copy says nothing about tasks ticked off since, so keep hiding them
+        setStatus("offline");
+        return;
+      }
       // Stop hiding a task once the sync agrees it's gone, or once the grace period is over
       const listed = new Set(json.tasks.map((t) => t.id));
       setDone((prev) => {
@@ -73,9 +81,12 @@ export function useBoard() {
       }
     };
     document.addEventListener("visibilitychange", onVisible);
+    // Back online after showing an offline copy
+    window.addEventListener("online", refresh);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", refresh);
     };
   }, [refresh]);
 

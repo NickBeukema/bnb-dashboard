@@ -162,6 +162,9 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "tnum" 1;
+    /* Installed on a phone, the page runs edge to edge (viewport-fit=cover) */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
   }
   /* The kitchen TV: a 1080×1920 portrait panel read from across the room.
      Scaling the root size scales every rem-based token (type, spacing, controls) together. */

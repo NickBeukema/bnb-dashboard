@@ -83,6 +83,17 @@ describe("Board", () => {
     expect(screen.getByRole("button", { name: "Refresh now" })).toBeEnabled();
   });
 
+  it("says when it's showing an offline copy, with the date once it's not today's", () => {
+    mockBoard({
+      status: "offline",
+      data: { ...data, lastUpdated: new Date(2026, 9, 5, 18, 30) },
+      tasks,
+    });
+    render(<Board />);
+    expect(screen.getByText("Offline. Showing Oct 5, 6:30 PM")).toHaveClass("text-destructive");
+    expect(screen.getByRole("button", { name: "Refresh now" })).toBeEnabled();
+  });
+
   it("names the properties whose feed failed", () => {
     mockBoard({ status: "ready", data: { ...data, failed: ["Red", "Lake Breeze"] }, tasks });
     render(<Board />);
