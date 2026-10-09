@@ -154,3 +154,33 @@ export const stayOnNight = (property: Property, day: Date, stays: Stay[]) =>
       differenceInCalendarDays(day, s.checkIn) >= 0 &&
       differenceInCalendarDays(s.checkOut, day) > 0,
   ) ?? null;
+
+/** What one property has going on on one day, for the phone calendar's day panel */
+export type PropertyDay = {
+  property: Property;
+  /** Leaving that morning */
+  out: Stay | null;
+  /** Arriving that afternoon */
+  in: Stay | null;
+  /** Staying over that night, having arrived on an earlier day */
+  staying: Stay | null;
+  /** A seasonal closure covering the day */
+  closed: Stay | null;
+};
+
+export const daysAtProperties = (day: Date, stays: Stay[]): PropertyDay[] =>
+  PROPERTIES.map((property) => {
+    const own = stays.filter((s) => s.property.name === property.name);
+    const covers = (s: Stay) =>
+      differenceInCalendarDays(day, s.checkIn) >= 0 &&
+      differenceInCalendarDays(s.checkOut, day) > 0;
+    const turnover = movementsOn(day, own)[0];
+    const night = stayOnNight(property, day, own);
+    return {
+      property,
+      out: turnover?.out ?? null,
+      in: turnover?.in ?? null,
+      staying: night && night !== turnover?.in ? night : null,
+      closed: own.find((s) => s.closed && covers(s)) ?? null,
+    };
+  });

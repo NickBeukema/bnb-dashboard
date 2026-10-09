@@ -19,21 +19,29 @@ export function StayAgenda({
   today,
   stays,
   onSelectStay,
+  showTitle = true,
   className,
 }: {
   today: Date;
   stays: Stay[];
   onSelectStay: (stay: Stay) => void;
+  /** Off when the phone's view switcher heads the section instead */
+  showTitle?: boolean;
   className?: string;
 }) {
   const horizon = addDays(today, DAYS_AHEAD);
   const upcoming = stays.filter((s) => !s.closed && s.checkOut >= today && s.checkIn <= horizon);
 
   return (
-    <section aria-labelledby="agenda-title" className={cn("flex flex-col gap-3", className)}>
-      <h2 id="agenda-title" className="px-1 text-2xl font-semibold tracking-tight">
-        Stays this month
-      </h2>
+    <section
+      aria-labelledby={showTitle ? "agenda-title" : undefined}
+      className={cn("flex flex-col gap-3", className)}
+    >
+      {showTitle && (
+        <h2 id="agenda-title" className="px-1 text-2xl font-semibold tracking-tight">
+          Stays this month
+        </h2>
+      )}
       {upcoming.length === 0 ? (
         <p className="px-1 text-muted-foreground">No bookings in the next 30 days.</p>
       ) : (

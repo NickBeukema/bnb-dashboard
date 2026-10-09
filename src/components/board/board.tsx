@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useNow } from "./bits";
+import { PhoneStays } from "./phone-stays";
 import { Runway, RunwaySkeleton } from "./runway";
 import { AllTasksSheet, StaySheet } from "./sheets";
-import { StayAgenda } from "./stay-agenda";
 import { StayCalendar, StayCalendarSkeleton } from "./stay-calendar";
 import { ThemeModeToggle } from "./theme";
 import { type Status, useBoard } from "./use-board";
@@ -64,7 +64,7 @@ export function Board() {
             onSelectStay={(s) => setStayId(s.id)}
             className="hidden shrink-0 md:flex"
           />
-          <StayAgenda
+          <PhoneStays
             today={today}
             stays={data.stays}
             onSelectStay={(s) => setStayId(s.id)}

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # personal notes
 /todo.md
+
+# local Claude Code skills (machine-specific, hold credentials)
+/.claude/skills/
