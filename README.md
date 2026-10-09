@@ -12,6 +12,7 @@ step with the bookings.
 | `/v3`                 | Redirects to `/` (the board's old address).                                         |
 | `GET /api/calendar`   | Bookings and open to-dos. This is also where the sync runs (see below).             |
 | `PATCH /api/task/:id` | Takes `{ "completed": boolean }`. Completes or reopens a task.                      |
+| `GET /api/version`    | The commit the server was built from. Open boards use it to offer a refresh.        |
 
 ## How the Todoist sync works
 
@@ -125,6 +126,10 @@ screen like an app.
   Showing <time>". Ticking tasks off needs the connection.
 - **Updates:** pages and data always come from the network first, so a deploy shows up on the
   next load. Bump `VERSION` in `sw.js` only when changing how it caches.
+- **New version notice:** an installed app can stay open for days, so the board checks
+  `GET /api/version` every 5 minutes, when it's reopened and when it's back online. Each build is
+  stamped with its git commit (`BUILD_ID` in `next.config.ts`). When the server's commit differs,
+  a toast offers **Refresh**; **Later** hides it until the app is next opened.
 - **Icons:** drawn by `npm run icons` from the property colours.
 
 ## Deployment (Raspberry Pi)

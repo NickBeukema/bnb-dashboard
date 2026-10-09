@@ -3,6 +3,7 @@ import { Figtree } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { BoardThemeProvider } from "@/components/board/theme";
 import { ServiceWorker } from "@/components/service-worker";
+import { UpdateNotice } from "@/components/update-notice";
 import "./globals.css";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
@@ -37,9 +38,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <BoardThemeProvider>
           {children}
           <ServiceWorker />
+          <UpdateNotice />
           <Toaster
             position="bottom-center"
-            toastOptions={{ classNames: { toast: "cn-toast text-base!" } }}
+            toastOptions={{
+              classNames: {
+                toast: "cn-toast text-base!",
+                // Undo and Refresh are tapped on phones: keep them at least 44px tall
+                actionButton: "h-11! px-4! text-base!",
+                cancelButton: "h-11! px-4! text-base!",
+              },
+            }}
           />
         </BoardThemeProvider>
       </body>
