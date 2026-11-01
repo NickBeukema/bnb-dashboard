@@ -1,7 +1,7 @@
 import { addDays, format, subDays } from "date-fns";
 import type { TodoistApi } from "@doist/todoist-sdk";
 import type { Task } from "@/lib/calendar-types";
-import { SYNC_DAYS, type NewTask } from "./task-plan";
+import { SYNC_DAYS, type NewTask, type OpenTask } from "./task-plan";
 
 /** The most useful text from a Todoist SDK error: its response body, else the message */
 export function todoistErrorMessage(error: unknown): string {
@@ -26,12 +26,16 @@ async function readAll<T>(
 }
 
 /**
- * Ids (from task descriptions) of the generated tasks Todoist already has, open or completed.
- * Covers 5 days back to SYNC_DAYS + 3 ahead, since review requests fall after the stay ends.
+ * The generated tasks Todoist already has: the ids (from task descriptions) of every one, open
+ * or completed, and the open ones in full. Covers 7 days back, a week of trash reminders, to
+ * SYNC_DAYS + 3 ahead, since review requests fall after the stay ends.
  * Todoist rejects completed-task ranges over 6 weeks, so keep this window under that.
  */
-export async function fetchExistingTaskIds(api: TodoistApi, now: Date): Promise<Set<string>> {
-  const since = subDays(now, 5);
+export async function fetchExistingTasks(
+  api: TodoistApi,
+  now: Date,
+): Promise<{ ids: Set<string>; open: OpenTask[] }> {
+  const since = subDays(now, 7);
   const until = addDays(now, SYNC_DAYS + 3);
   const query = `date after: ${format(since, "M/d/yyyy")} & date before: ${format(until, "M/d/yyyy")}`;
 
@@ -49,7 +53,15 @@ export async function fetchExistingTaskIds(api: TodoistApi, now: Date): Promise<
     return { items: page.items, nextCursor: page.nextCursor };
   });
 
-  return new Set([...open, ...completed].map((task) => task.description));
+  return {
+    ids: new Set([...open, ...completed].map((task) => task.description)),
+    open: open.map((task) => ({
+      id: task.id,
+      description: task.description,
+      dueDate: task.due?.date ?? "",
+      labels: task.labels,
+    })),
+  };
 }
 
 /** Creates the planned tasks one by one. A failure is logged and skipped, not fatal. */
@@ -64,6 +76,20 @@ export async function createTasks(api: TodoistApi, tasks: NewTask[]) {
     }
   }
   return created;
+}
+
+/** Deletes tasks by Todoist id one by one. A failure is logged and skipped, not fatal. */
+export async function deleteTasks(api: TodoistApi, ids: string[]) {
+  let deleted = 0;
+  for (const id of ids) {
+    try {
+      await api.deleteTask(id);
+      deleted++;
+    } catch (error) {
+      console.error("Error deleting task:", todoistErrorMessage(error));
+    }
+  }
+  return deleted;
 }
 
 /** Every open task, soonest due first */

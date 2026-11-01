@@ -1,7 +1,7 @@
 /**
  * The rentals, in the order they're listed everywhere (calendar lanes, legends, API sources).
  * `name` is the iCal source name and the Todoist label, so it can't change without
- * re-labelling existing tasks.
+ * re-labelling existing tasks. `trashDay` is the weekday the bins are collected (0 is Sunday).
  */
 export const PROPERTY_CONFIG = [
   {
@@ -11,6 +11,7 @@ export const PROPERTY_CONFIG = [
     token: "wavesong",
     initial: "W",
     doorCode: true,
+    trashDay: 4, // Thursday morning
   },
   {
     name: "Red",
@@ -19,6 +20,7 @@ export const PROPERTY_CONFIG = [
     token: "red-house",
     initial: "R",
     doorCode: false,
+    trashDay: 4, // Thursday morning
   },
   {
     name: "Lake Breeze",
@@ -27,6 +29,7 @@ export const PROPERTY_CONFIG = [
     token: "lake-breeze",
     initial: "L",
     doorCode: true,
+    trashDay: 1, // Monday morning
   },
   {
     name: "Nautical Nest",
@@ -35,6 +38,7 @@ export const PROPERTY_CONFIG = [
     token: "nautical-nest",
     initial: "N",
     doorCode: true,
+    trashDay: 4, // Thursday morning
   },
 ] as const;
 

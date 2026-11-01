@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import type { CalendarSource } from "@/lib/calendar-types";
 import { PROPERTY_CONFIG } from "@/lib/properties";
 import { fetchFeed } from "@/lib/server/ical";
-import { planTasks } from "@/lib/server/task-plan";
+import { planTasks, planTrashReminders } from "@/lib/server/task-plan";
 import {
   createTasks,
-  fetchExistingTaskIds,
+  deleteTasks,
+  fetchExistingTasks,
   fetchOpenTasks,
   todoistErrorMessage,
 } from "@/lib/server/todoist";
@@ -43,12 +44,13 @@ async function loadCalendar(): Promise<{ body: object; status: number }> {
     const api = new TodoistApi(token);
     const now = new Date();
 
-    const existing = await fetchExistingTaskIds(api, now);
+    const { ids: existing, open } = await fetchExistingTasks(api, now);
     const results = await Promise.allSettled(feeds.map(({ url }) => fetchFeed(url)));
 
     const sources: CalendarSource[] = [];
     const failed: string[] = [];
     let created = 0;
+    let removed = 0;
     for (const [i, result] of results.entries()) {
       const { property } = feeds[i];
       if (result.status === "rejected") {
@@ -58,11 +60,20 @@ async function loadCalendar(): Promise<{ body: object; status: number }> {
       const events = result.status === "fulfilled" ? result.value : [];
       sources.push({ name: property.name, events, color: property.color });
 
-      const added = await createTasks(api, planTasks(events, property, existing, now));
+      const planned = planTasks(events, property, existing, now);
+      // An unread feed would look like every booking had gone, so leave its trash reminders be
+      if (result.status === "fulfilled") {
+        const trash = planTrashReminders(events, property, existing, open, now);
+        removed += await deleteTasks(api, trash.remove);
+        planned.push(...trash.create);
+      }
+
+      const added = await createTasks(api, planned);
       for (const task of added) existing.add(task.description);
       created += added.length;
     }
     if (created > 0) console.log(`Todoist sync: created ${created} task(s)`);
+    if (removed > 0) console.log(`Todoist sync: removed ${removed} outdated trash reminder(s)`);
 
     let tasks: Awaited<ReturnType<typeof fetchOpenTasks>> = [];
     try {

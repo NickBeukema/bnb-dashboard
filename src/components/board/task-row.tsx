@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { format } from "date-fns";
-import { KeyRoundIcon, ListTodoIcon, MailIcon, StarIcon } from "lucide-react";
+import { KeyRoundIcon, ListTodoIcon, MailIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { PropertySwatch } from "./bits";
@@ -12,6 +12,7 @@ const ICONS: Record<TaskKind, typeof MailIcon> = {
   welcome: MailIcon,
   "door-code": KeyRoundIcon,
   review: StarIcon,
+  trash: Trash2Icon,
   other: ListTodoIcon,
 };
 

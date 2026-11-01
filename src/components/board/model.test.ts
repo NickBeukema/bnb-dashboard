@@ -291,6 +291,24 @@ describe("toTasks", () => {
     ]);
   });
 
+  it("reads trash reminders, whose ids end with the trash day", () => {
+    const [t] = toTasks([
+      task({
+        id: "t",
+        name: "Send Trash Reminder (Reserved - Reema)",
+        description: "bnb-3b24b7a5-8270-4cb5-a5c9-8b4c652f0565-send-trash-reminder-2026-11-12",
+        labels: ["Wavesong"],
+      }),
+    ]);
+    expect(t).toMatchObject({
+      kind: "trash",
+      title: "Trash reminder",
+      guest: "Reema",
+      property: PROPERTIES[0],
+      stayId: "3b24b7a5-8270-4cb5-a5c9-8b4c652f0565",
+    });
+  });
+
   it('keeps an unparenthesised "Reserved" guest as Reserved and drops a missing one', () => {
     const [withReserved, withoutGuest] = toTasks([
       task({ id: "a", name: "Send Review Request (Reserved)" }),

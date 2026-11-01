@@ -42,7 +42,7 @@ export type Stay = {
   nights: number;
 };
 
-export type TaskKind = "welcome" | "door-code" | "review" | "other";
+export type TaskKind = "welcome" | "door-code" | "review" | "trash" | "other";
 
 export type BoardTask = {
   id: string;
@@ -89,18 +89,22 @@ export function toStays(sources: CalendarSource[]): Stay[] {
     .toSorted((a, b) => a.checkIn.getTime() - b.checkIn.getTime());
 }
 
-const TASK_ID = /^bnb-(.+)-(send-welcome-letter|send-review-request|make-door-code)$/;
+// Trash reminders end with their trash day: `bnb-<uid>-send-trash-reminder-2026-11-12`
+const TASK_ID =
+  /^bnb-(.+)-(send-welcome-letter|send-review-request|make-door-code|send-trash-reminder)(?:-\d{4}-\d{2}-\d{2})?$/;
 
 const KIND_BY_SLUG: Record<string, TaskKind> = {
   "send-welcome-letter": "welcome",
   "send-review-request": "review",
   "make-door-code": "door-code",
+  "send-trash-reminder": "trash",
 };
 
 export const TASK_LABEL: Record<TaskKind, string> = {
   welcome: "Welcome letter",
   "door-code": "Door code",
   review: "Review request",
+  trash: "Trash reminder",
   other: "To-do",
 };
 

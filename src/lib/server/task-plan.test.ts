@@ -2,10 +2,18 @@
 import { describe, expect, it } from "vitest";
 import type { CalendarEvent } from "@/lib/calendar-types";
 import { PROPERTY_CONFIG } from "@/lib/properties";
-import { planTasks, syncWindow, taskId } from "./task-plan";
+import {
+  type OpenTask,
+  planTasks,
+  planTrashReminders,
+  syncWindow,
+  taskId,
+  trashDays,
+  trashRecipient,
+} from "./task-plan";
 import { todoistErrorMessage } from "./todoist";
 
-const [wavesong, red] = PROPERTY_CONFIG;
+const [wavesong, red, lakeBreeze] = PROPERTY_CONFIG;
 // Noon on Wed Oct 7, 2026 in New York
 const now = new Date("2026-10-07T16:00:00.000Z");
 
@@ -181,6 +189,259 @@ describe("planTasks", () => {
       "bnb-late-send-welcome-letter",
       "bnb-late-make-door-code",
     ]);
+  });
+});
+
+describe("trashDays", () => {
+  it("lists the property's collection days from tomorrow to the end of the window", () => {
+    // Thursdays; today is Wednesday Oct 7
+    expect(trashDays(wavesong.trashDay, now)).toEqual([
+      new Date(2026, 9, 8),
+      new Date(2026, 9, 15),
+      new Date(2026, 9, 22),
+      new Date(2026, 9, 29),
+      new Date(2026, 10, 5),
+    ]);
+    // Mondays
+    expect(trashDays(lakeBreeze.trashDay, now)).toEqual([
+      new Date(2026, 9, 12),
+      new Date(2026, 9, 19),
+      new Date(2026, 9, 26),
+      new Date(2026, 10, 2),
+    ]);
+  });
+
+  it("starts tomorrow when today is trash day", () => {
+    const thursday = new Date("2026-10-08T16:00:00.000Z");
+    expect(trashDays(wavesong.trashDay, thursday)[0]).toEqual(new Date(2026, 9, 15));
+  });
+});
+
+describe("trashRecipient", () => {
+  // Trash day Thursday Oct 22: the eve is Wednesday Oct 21; the week runs from Oct 15
+  const trashDay = new Date(2026, 9, 22);
+  const recipient = (...events: CalendarEvent[]) => {
+    const found = trashRecipient(events, trashDay);
+    return found && [found.event.id, found.day];
+  };
+
+  it("picks the guest staying the night before trash day, on that day", () => {
+    expect(recipient(stay("over", "2026-10-20", "2026-10-24"))).toEqual([
+      "over",
+      new Date(2026, 9, 21),
+    ]);
+    // Arriving on the eve still means a night there
+    expect(recipient(stay("arrives", "2026-10-21", "2026-10-24"))).toEqual([
+      "arrives",
+      new Date(2026, 9, 21),
+    ]);
+  });
+
+  it("otherwise picks the latest guest that week, on their last night", () => {
+    // Leaves on the morning of the eve: last night is Oct 20
+    expect(recipient(stay("leaves", "2026-10-18", "2026-10-21"))).toEqual([
+      "leaves",
+      new Date(2026, 9, 20),
+    ]);
+    expect(
+      recipient(
+        stay("early", "2026-10-15", "2026-10-17"),
+        stay("later", "2026-10-18", "2026-10-20"),
+      ),
+    ).toEqual(["later", new Date(2026, 9, 19)]);
+  });
+
+  it("follows the Reema example: out on Mon Nov 9, nobody before Thu Nov 12, told on the 8th", () => {
+    const found = trashRecipient(
+      [stay("reema", "2026-11-05", "2026-11-09")],
+      new Date(2026, 10, 12),
+    );
+    expect(found?.event.id).toBe("reema");
+    expect(found?.day).toEqual(new Date(2026, 10, 8));
+  });
+
+  it("prefers the guest there the night before over one who left earlier", () => {
+    expect(
+      recipient(
+        stay("left", "2026-10-16", "2026-10-19"),
+        stay("there", "2026-10-21", "2026-10-23"),
+      ),
+    ).toEqual(["there", new Date(2026, 9, 21)]);
+  });
+
+  it("counts the night of the previous collection, but nothing before it", () => {
+    // Last night Oct 15, the previous trash day
+    expect(recipient(stay("edge", "2026-10-12", "2026-10-16"))).toEqual([
+      "edge",
+      new Date(2026, 9, 15),
+    ]);
+    // Last night Oct 14
+    expect(recipient(stay("gone", "2026-10-10", "2026-10-15"))).toBeNull();
+  });
+
+  it("finds nobody when the guest only arrives on trash day", () => {
+    expect(recipient(stay("late", "2026-10-22", "2026-10-25"))).toBeNull();
+  });
+
+  it("counts private bookings but not seasonal closures", () => {
+    expect(recipient(stay("closed", "2026-10-01", "2027-04-01", "Blocked"))).toBeNull();
+    expect(recipient(stay("private", "2026-10-20", "2026-10-23", "Blocked"))).toEqual([
+      "private",
+      new Date(2026, 9, 21),
+    ]);
+  });
+});
+
+describe("planTrashReminders", () => {
+  const reminder = (id: string, trashDay: string) =>
+    `${taskId(id, "Send Trash Reminder")}-${trashDay}`;
+  const openTask = (
+    id: string,
+    description: string,
+    dueDate: string,
+    labels: string[] = ["Wavesong"],
+  ): OpenTask => ({ id, description, dueDate, labels });
+  const plan = (events: CalendarEvent[], open: OpenTask[] = [], existing = new Set<string>()) =>
+    planTrashReminders(
+      events,
+      wavesong,
+      new Set([...existing, ...open.map((t) => t.description)]),
+      open,
+      now,
+    );
+
+  it("plans a reminder at 11:00, labelled with the property, keyed by the trash day", () => {
+    expect(plan([stay("s1", "2026-10-19", "2026-10-22")])).toEqual({
+      create: [
+        {
+          content: "Send Trash Reminder (Reserved - Jen)",
+          description: "bnb-s1-send-trash-reminder-2026-10-22",
+          dueDate: new Date("2026-10-21T11:00:00").toISOString(),
+          labels: ["Wavesong"],
+        },
+      ],
+      remove: [],
+    });
+  });
+
+  it("uses each property's own trash day", () => {
+    // Lake Breeze collects on Monday Oct 12, so the guest hears on Sunday
+    const { create } = planTrashReminders(
+      [stay("s1", "2026-10-10", "2026-10-12")],
+      lakeBreeze,
+      new Set(),
+      [],
+      now,
+    );
+    expect(create.map((t) => [t.description, t.dueDate])).toEqual([
+      ["bnb-s1-send-trash-reminder-2026-10-12", new Date("2026-10-11T11:00:00").toISOString()],
+    ]);
+  });
+
+  it("reminds a guest who stays past trash day again on their last night", () => {
+    // There the night before Oct 22, then the latest guest of the week before Oct 29
+    const { create } = plan([stay("s1", "2026-10-20", "2026-10-24")]);
+    expect(create.map((t) => [t.description, t.dueDate])).toEqual([
+      ["bnb-s1-send-trash-reminder-2026-10-22", new Date("2026-10-21T11:00:00").toISOString()],
+      ["bnb-s1-send-trash-reminder-2026-10-29", new Date("2026-10-23T11:00:00").toISOString()],
+    ]);
+  });
+
+  it("keeps an open reminder that's still right", () => {
+    const open = [openTask("t1", reminder("s1", "2026-10-22"), "2026-10-21T15:00:00Z")];
+    expect(plan([stay("s1", "2026-10-19", "2026-10-22")], open)).toEqual({
+      create: [],
+      remove: [],
+    });
+  });
+
+  it("moves the reminder when someone books nearer to trash day", () => {
+    const open = [openTask("t1", reminder("early", "2026-10-22"), "2026-10-17T15:00:00Z")];
+    const events = [
+      stay("early", "2026-10-15", "2026-10-18"),
+      stay("late", "2026-10-20", "2026-10-22"),
+    ];
+    const { create, remove } = plan(events, open);
+    expect(remove).toEqual(["t1"]);
+    expect(create.map((t) => [t.description, t.dueDate])).toEqual([
+      ["bnb-late-send-trash-reminder-2026-10-22", new Date("2026-10-21T11:00:00").toISOString()],
+    ]);
+  });
+
+  it("moves the reminder's day when the same guest's stay changes", () => {
+    // Was out on Oct 18, now extended over trash day
+    const open = [openTask("t1", reminder("s1", "2026-10-22"), "2026-10-17T15:00:00Z")];
+    const { create, remove } = plan([stay("s1", "2026-10-15", "2026-10-24")], open);
+    expect(remove).toEqual(["t1"]);
+    expect(create.map((t) => [t.description, t.dueDate])).toContainEqual([
+      "bnb-s1-send-trash-reminder-2026-10-22",
+      new Date("2026-10-21T11:00:00").toISOString(),
+    ]);
+  });
+
+  it("removes the reminder when nobody is staying that week any more", () => {
+    const open = [openTask("t1", reminder("gone", "2026-10-22"), "2026-10-21T15:00:00Z")];
+    expect(plan([], open)).toEqual({ create: [], remove: ["t1"] });
+  });
+
+  it("removes duplicates of an open reminder", () => {
+    const open = [
+      openTask("t1", reminder("s1", "2026-10-22"), "2026-10-21T15:00:00Z"),
+      openTask("t2", reminder("s1", "2026-10-22"), "2026-10-21T15:00:00Z"),
+    ];
+    expect(plan([stay("s1", "2026-10-19", "2026-10-22")], open)).toEqual({
+      create: [],
+      remove: ["t2"],
+    });
+  });
+
+  it("removes a reminder whose due date was taken off", () => {
+    const open = [openTask("t1", reminder("s1", "2026-10-22"), "")];
+    const { create, remove } = plan([stay("s1", "2026-10-19", "2026-10-22")], open);
+    expect(remove).toEqual(["t1"]);
+    expect(create).toHaveLength(1);
+  });
+
+  it("never redoes a completed reminder", () => {
+    const done = new Set([reminder("s1", "2026-10-22")]);
+    expect(plan([stay("s1", "2026-10-19", "2026-10-22")], [], done)).toEqual({
+      create: [],
+      remove: [],
+    });
+  });
+
+  it("still reminds a nearer guest when the old recipient's reminder was completed", () => {
+    const done = new Set([reminder("early", "2026-10-22")]);
+    const events = [
+      stay("early", "2026-10-15", "2026-10-18"),
+      stay("late", "2026-10-20", "2026-10-23"),
+    ];
+    const { create } = plan(events, [], done);
+    expect(create.map((t) => t.description)).toContain("bnb-late-send-trash-reminder-2026-10-22");
+  });
+
+  it("leaves a collection alone once its reminder day has passed", () => {
+    // Trash day is tomorrow (Oct 8), but the guest left Oct 6, so their reminder was due Oct 5
+    const open = [openTask("t1", reminder("old", "2026-10-08"), "2026-10-04T15:00:00Z")];
+    expect(plan([stay("left", "2026-10-03", "2026-10-06")], open)).toEqual({
+      create: [],
+      remove: [],
+    });
+  });
+
+  it("only touches this property's trash reminders", () => {
+    const open = [
+      openTask("red", reminder("r", "2026-10-22"), "2026-10-21T15:00:00Z", ["Red"]),
+      openTask("letter", "bnb-s1-send-welcome-letter", "2026-10-21T15:00:00Z"),
+    ];
+    expect(plan([], open)).toEqual({ create: [], remove: [] });
+  });
+
+  it("plans nothing for seasonal closures", () => {
+    expect(plan([stay("c1", "2026-10-01", "2027-04-01", "Blocked")])).toEqual({
+      create: [],
+      remove: [],
+    });
   });
 });
 

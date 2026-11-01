@@ -1,7 +1,13 @@
 import {
   addDays,
+  type Day,
   endOfDay,
+  format,
+  isBefore,
+  isValid,
   isWithinInterval,
+  min,
+  nextDay,
   parseISO,
   setHours,
   startOfDay,
@@ -94,4 +100,107 @@ export function planTasks(
     }
   }
   return tasks;
+}
+
+export const TRASH_REMINDER = "Send Trash Reminder";
+
+/** A generated task that's still open in Todoist */
+export type OpenTask = {
+  id: string;
+  description: string;
+  /** Todoist's due date: a day (`yyyy-MM-dd`) or a date-time */
+  dueDate: string;
+  labels: string[];
+};
+
+/** The bin collections the sync manages: the property's trash day, from tomorrow to SYNC_DAYS out */
+export function trashDays(trashDay: Day, now: Date): Date[] {
+  const { end } = syncWindow(now);
+  const days: Date[] = [];
+  for (let day = nextDay(startOfDay(now), trashDay); day <= end; day = addDays(day, 7)) {
+    days.push(day);
+  }
+  return days;
+}
+
+/**
+ * Who gets told to take the trash out for one collection, and on which day. The guest staying
+ * the night before trash day hears that day. Failing that, the latest guest in the week since
+ * the previous collection hears on their last night. With nobody there that week, nobody does.
+ */
+export function trashRecipient(events: CalendarEvent[], trashDay: Date) {
+  const eve = subDays(trashDay, 1);
+  const weekStart = subDays(trashDay, 7);
+  let best: { event: CalendarEvent; day: Date } | null = null;
+
+  for (const event of events) {
+    if (isClosure(event)) continue;
+    const day = min([subDays(checkOut(event), 1), eve]);
+    if (isBefore(day, checkIn(event)) || isBefore(day, weekStart)) continue;
+    if (!best || day > best.day) best = { event, day };
+  }
+  return best;
+}
+
+// The description of a trash reminder ends with its trash day, e.g. `-send-trash-reminder-2026-11-12`
+const trashReminderDay = (description: string) =>
+  description.match(/^bnb-.+-send-trash-reminder-(\d{4}-\d{2}-\d{2})$/)?.[1];
+
+// The local day of a due date, whether it's a bare day or a UTC date-time. "" for none.
+const dayOf = (dueDate: string) => {
+  const date = parseISO(dueDate);
+  return isValid(date) ? format(date, "yyyy-MM-dd") : "";
+};
+
+/**
+ * Brings one property's trash reminders in line with its bookings. Unlike the other tasks, a
+ * reminder moves: when a booking changes who should hear about a collection, or when, the
+ * open reminder is removed and the right one created. A completed reminder is never redone.
+ * `existing` holds the ids of every generated task (open or completed); `open` the open ones.
+ */
+export function planTrashReminders(
+  events: CalendarEvent[],
+  property: PropertyConfig,
+  existing: ReadonlySet<string>,
+  open: OpenTask[],
+  now: Date,
+): { create: NewTask[]; remove: string[] } {
+  const today = startOfDay(now);
+  const create: NewTask[] = [];
+  const remove: string[] = [];
+
+  for (const trashDay of trashDays(property.trashDay, now)) {
+    const key = format(trashDay, "yyyy-MM-dd");
+    const recipient = trashRecipient(events, trashDay);
+    // Its day has passed, so there's nothing left to move
+    if (recipient && isBefore(recipient.day, today)) continue;
+
+    const wanted = recipient && {
+      content: `${TRASH_REMINDER} (${recipient.event.title})`,
+      description: `${taskId(recipient.event.id, TRASH_REMINDER)}-${key}`,
+      dueDate: setHours(recipient.day, 11).toISOString(),
+      labels: [property.name],
+    };
+    const current = open.filter(
+      (task) => trashReminderDay(task.description) === key && task.labels.includes(property.name),
+    );
+
+    // Keep one open reminder if it's already right; remove every other
+    let kept = false;
+    for (const task of current) {
+      const right =
+        !kept &&
+        task.description === wanted?.description &&
+        dayOf(task.dueDate) === dayOf(wanted.dueDate);
+      if (right) kept = true;
+      else remove.push(task.id);
+    }
+
+    if (!wanted || kept) continue;
+    const completed =
+      existing.has(wanted.description) &&
+      !current.some((task) => task.description === wanted.description);
+    if (!completed) create.push(wanted);
+  }
+  return { create, remove };
 }

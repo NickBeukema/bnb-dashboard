@@ -27,11 +27,16 @@ Each call to `/api/calendar` does the following:
    - **Make Door Code**, due 3 days before check-in at 11:00. Every property except Red gets one.
    - **Send Review Request**, due at the start of the third day after checkout. It hangs off
      checkout, so long stays and stays that began earlier still get one.
+   - **Send Trash Reminder**, which works differently: see [Trash reminders](#trash-reminders).
 3. Skips any task that already exists. Every task's description holds a stable key
    (`bnb-<event uid>-<task slug>`), and the sync checks it against both open and completed
    tasks. As a result:
    - completing a task never brings it back;
    - deleting a task in Todoist does bring it back on the next sync.
+
+   Trash reminders are the one exception: the sync moves or removes an open one when the
+   bookings change.
+
 4. Returns all open Todoist tasks, sorted by due date.
 
 The board polls every 5 minutes, and also refresh when the tab becomes visible if the data is
@@ -39,6 +44,47 @@ more than a minute old. Ticking a task off completes it in Todoist, and Undo reo
 
 Each event's `checkIn` and `checkOut` are plain local days (`yyyy-MM-dd`), read from the feeds'
 date-only `DTSTART`/`DTEND`. `checkOut` is the day the guest leaves.
+
+### Trash reminders
+
+Guests are asked to take the bins out before collection, so for every trash day in the next
+30 days the host gets a **Send Trash Reminder** task to message one guest. Each property's
+collection day is its `trashDay` in `src/lib/properties.ts`:
+
+| Property                     | Trash day        |
+| ---------------------------- | ---------------- |
+| Wavesong, Red, Nautical Nest | Thursday morning |
+| Lake Breeze                  | Monday morning   |
+
+**Who gets it, and when.** The reminder is due at 11:00 on the day the guest should hear:
+
+1. If a guest is staying the night before trash day (including one who arrives that day), they
+   get it, due that day.
+2. Otherwise, the latest guest in the week since the previous collection gets it, due on their
+   last night. For example, if Reema leaves Wavesong on Monday Nov 9 and nobody is booked
+   before trash day on Thursday Nov 12, Reema gets it on Sunday Nov 8.
+3. If nobody stays that week, there's no reminder. A guest who only arrives on trash day
+   doesn't count, because the bins were collected that morning.
+
+A guest who stays past trash day can get two reminders: one the night before trash day, and
+one on their last night for the following collection, since their trash waits a week. Private
+bookings count as guests; seasonal closures don't.
+
+**Keeping it up to date.** The recipient can change after a reminder is made, for example when
+someone books nearer to trash day, a stay is extended or cut short, or a booking is cancelled.
+So on every sync, for every upcoming trash day:
+
+- an open reminder for the wrong guest or the wrong day is **deleted**, and the right one is
+  created;
+- an open reminder is deleted, with no replacement, when nobody is staying that week any more;
+- a **completed** reminder is never redone for the same guest. If someone else should now get
+  it, they get a new one, because the old message went to a guest who is gone.
+
+Each reminder's key ends with the trash day it's for
+(`bnb-<event uid>-send-trash-reminder-<yyyy-MM-dd>`). This is how the sync finds the reminder
+for each collection. Once a reminder's due day has passed, the sync leaves that trash day
+alone. If a property's feed can't be read, the sync doesn't touch its reminders, so a failed
+download can't wipe them out.
 
 ### Owner blocks
 

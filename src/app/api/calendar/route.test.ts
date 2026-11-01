@@ -10,6 +10,7 @@ const sdk = vi.hoisted(() => ({
     getCompletedTasksByDueDate: vi.fn(),
     getTasks: vi.fn(),
     addTask: vi.fn(),
+    deleteTask: vi.fn(),
   },
 }));
 
@@ -82,7 +83,12 @@ async function get() {
   return { status: response.status, body: await response.json() };
 }
 
-const addedTasks = () => sdk.api.addTask.mock.calls.map(([args]) => args);
+const allAddedTasks = () => sdk.api.addTask.mock.calls.map(([args]) => args);
+const isTrashReminder = (task: { description: string }) =>
+  task.description.includes("-send-trash-reminder-");
+/** The per-stay tasks created: welcome letters, review requests and door codes */
+const addedTasks = () => allAddedTasks().filter((task) => !isTrashReminder(task));
+const addedTrashReminders = () => allAddedTasks().filter(isTrashReminder);
 
 beforeEach(() => {
   // Noon on Wed Oct 7, 2026 in New York (EDT)
@@ -101,6 +107,7 @@ beforeEach(() => {
   sdk.api.getCompletedTasksByDueDate.mockReset().mockResolvedValue(completedPage([]));
   sdk.api.getTasks.mockReset().mockResolvedValue(page([]));
   sdk.api.addTask.mockReset().mockResolvedValue({ id: "new" });
+  sdk.api.deleteTask.mockReset().mockResolvedValue(true);
 
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -365,16 +372,16 @@ describe("GET /api/calendar: task sync", () => {
     ]);
   });
 
-  it("asks Todoist for tasks from 5 days back to 33 days ahead", async () => {
+  it("asks Todoist for tasks from 7 days back to 33 days ahead", async () => {
     await get();
 
     expect(sdk.api.getTasksByFilter).toHaveBeenCalledWith({
-      query: "date after: 10/2/2026 & date before: 11/9/2026",
+      query: "date after: 9/30/2026 & date before: 11/9/2026",
       limit: 200,
       cursor: null,
     });
     expect(sdk.api.getCompletedTasksByDueDate).toHaveBeenCalledWith({
-      since: "2026-10-02T16:00:00.000Z",
+      since: "2026-09-30T16:00:00.000Z",
       until: "2026-11-09T17:00:00.000Z",
       limit: 200,
       cursor: null,
@@ -457,7 +464,8 @@ describe("GET /api/calendar: task sync", () => {
     const { status } = await get();
 
     expect(status).toBe(200);
-    expect(sdk.api.addTask).toHaveBeenCalledTimes(2);
+    // Welcome letter (failed), review request and trash reminder
+    expect(sdk.api.addTask).toHaveBeenCalledTimes(3);
     expect(console.error).toHaveBeenCalledWith("Error adding task:", "rate limited");
   });
 
@@ -471,6 +479,87 @@ describe("GET /api/calendar: task sync", () => {
     expect(body.details).toBe("Todoist is down");
     // Without knowing what exists, it must not create anything
     expect(sdk.api.addTask).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/calendar: trash reminders", () => {
+  const openReminder = (id: string, description: string, date: string, label: string) => ({
+    id,
+    description,
+    due: { date },
+    labels: [label],
+  });
+
+  it("reminds the guest staying the night before trash day", async () => {
+    // Red's trash day is Thursday Oct 22
+    feeds[FEEDS.RED_ICAL_URL] = ics([
+      { uid: "r", start: "20261020", end: "20261022", summary: "Reserved - Reema" },
+    ]);
+
+    await get();
+
+    expect(addedTrashReminders()).toEqual([
+      {
+        content: "Send Trash Reminder (Reserved - Reema)",
+        description: "bnb-r-send-trash-reminder-2026-10-22",
+        dueDate: "2026-10-21T15:00:00.000Z",
+        labels: ["Red"],
+      },
+    ]);
+    expect(sdk.api.deleteTask).not.toHaveBeenCalled();
+  });
+
+  it("deletes an outdated reminder and creates the right one", async () => {
+    sdk.api.getTasksByFilter.mockResolvedValue(
+      page([
+        openReminder(
+          "old",
+          "bnb-early-send-trash-reminder-2026-10-22",
+          "2026-10-17T15:00:00Z",
+          "Red",
+        ),
+      ]),
+    );
+    feeds[FEEDS.RED_ICAL_URL] = ics([
+      { uid: "early", start: "20261015", end: "20261018" },
+      { uid: "late", start: "20261020", end: "20261022" },
+    ]);
+
+    await get();
+
+    expect(sdk.api.deleteTask).toHaveBeenCalledWith("old");
+    expect(addedTrashReminders().map((t) => t.description)).toEqual([
+      "bnb-late-send-trash-reminder-2026-10-22",
+    ]);
+    expect(console.log).toHaveBeenCalledWith("Todoist sync: removed 1 outdated trash reminder(s)");
+  });
+
+  it("leaves a property's reminders alone when its feed can't be read", async () => {
+    sdk.api.getTasksByFilter.mockResolvedValue(
+      page([
+        openReminder("t1", "bnb-r-send-trash-reminder-2026-10-22", "2026-10-21T15:00:00Z", "Red"),
+      ]),
+    );
+    feeds[FEEDS.RED_ICAL_URL] = new Response("nope", { status: 500, statusText: "Server Error" });
+
+    const { status } = await get();
+
+    expect(status).toBe(200);
+    expect(sdk.api.deleteTask).not.toHaveBeenCalled();
+  });
+
+  it("logs a failed deletion and keeps going", async () => {
+    sdk.api.deleteTask.mockRejectedValue(new Error("gone already"));
+    sdk.api.getTasksByFilter.mockResolvedValue(
+      page([
+        openReminder("t1", "bnb-x-send-trash-reminder-2026-10-22", "2026-10-21T15:00:00Z", "Red"),
+      ]),
+    );
+
+    const { status } = await get();
+
+    expect(status).toBe(200);
+    expect(console.error).toHaveBeenCalledWith("Error deleting task:", "gone already");
   });
 });
 
@@ -586,7 +675,7 @@ describe("GET /api/calendar: concurrency", () => {
 
     expect([a.status, b.status, c.status]).toEqual([200, 200, 200]);
     expect(sdk.api.getTasksByFilter).toHaveBeenCalledTimes(1);
-    expect(sdk.api.addTask).toHaveBeenCalledTimes(2);
+    expect(sdk.api.addTask).toHaveBeenCalledTimes(3);
     expect(await b.json()).toEqual(await a.json());
   });
 
