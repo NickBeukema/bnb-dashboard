@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { type Property, propertyStyle } from "./model";

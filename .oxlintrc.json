@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "nextjs", "jsx-a11y", "import", "vitest", "unicorn", "oxc"],
+  "plugins": ["typescript", "react", "jsx-a11y", "import", "vitest", "unicorn", "oxc"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -10,7 +10,7 @@
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": [".next/**", "coverage/**", "next-env.d.ts"],
+  "ignorePatterns": ["dist/**", "coverage/**"],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "vitest/require-mock-type-parameters": "off",

@@ -10,8 +10,8 @@ User=care
 WorkingDirectory=/home/care/Desktop/bnb-dashboard
 Environment=NODE_ENV=production
 # A fresh clone has no build yet; make one rather than fail to start
-ExecStartPre=/bin/sh -c 'test -f .next/BUILD_ID || exec /usr/bin/npm run build'
-ExecStart=/usr/bin/npm start -- --hostname 0.0.0.0
+ExecStartPre=/bin/sh -c 'test -f dist/server/index.js || exec /usr/bin/npm run build'
+ExecStart=/usr/bin/npm start
 TimeoutStartSec=900
 Restart=always
 RestartSec=5

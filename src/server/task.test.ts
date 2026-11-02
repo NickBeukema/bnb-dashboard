@@ -18,22 +18,19 @@ vi.mock("@doist/todoist-sdk", () => ({
   },
 }));
 
-// The route reads the token at import time, so each test imports a fresh copy
-async function loadRoute() {
+// Each test imports a fresh copy of the app
+async function loadApp() {
   vi.resetModules();
-  return import("./route");
+  return (await import("./app")).default;
 }
 
-const params = (id: string) => ({ params: Promise.resolve({ id }) });
-
 const patch = async (body: string | object | undefined, id = "task-1") => {
-  const { PATCH } = await loadRoute();
-  const request = new Request(`http://localhost/api/task/${id}`, {
+  const app = await loadApp();
+  const response = await app.request(`/api/task/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: typeof body === "string" || body === undefined ? body : JSON.stringify(body),
   });
-  const response = await PATCH(request, params(id));
   return { status: response.status, body: await response.json() };
 };
 
@@ -44,7 +41,7 @@ beforeEach(() => {
   sdk.api.reopenTask.mockReset().mockResolvedValue(true);
 });
 
-describe("PATCH /api/task/[id]", () => {
+describe("PATCH /api/task/:id", () => {
   it("completes a task", async () => {
     const { status, body } = await patch({ completed: true }, "abc");
     expect(status).toBe(200);

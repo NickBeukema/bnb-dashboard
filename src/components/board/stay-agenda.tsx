@@ -1,5 +1,3 @@
-"use client";
-
 import { addDays, format, isSameMonth } from "date-fns";
 import { ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

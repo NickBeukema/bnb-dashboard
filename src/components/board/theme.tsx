@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { MoonIcon, SunIcon, SunMoonIcon } from "lucide-react";
@@ -22,7 +20,7 @@ const ModeContext = createContext<{ mode: ThemeMode; setMode: (mode: ThemeMode) 
 
 export function BoardThemeProvider({ children }: { children: React.ReactNode }) {
   return (
-    // next-themes applies the last light/dark choice before paint; the mode on top of it
+    // index.html applies the last light/dark choice before paint; the mode on top of it
     // (auto/light/dark) decides what that choice should be from here on.
     <ThemeProvider
       attribute="class"

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { format, startOfMonth } from "date-fns";
 import { CalendarDaysIcon, ListIcon } from "lucide-react";

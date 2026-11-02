@@ -3,10 +3,10 @@
 // - Pages and /api/calendar: network first, so screens always show live data when they can.
 //   Offline, they get the last copy instead; the calendar copy carries an `X-Board-Offline`
 //   header so the board can say it's showing old data.
-// - Next's build files (/_next/static, hashed and immutable) and icons: cache first.
+// - Vite's build files (/assets, hashed and immutable) and icons: cache first.
 // - Everything else, including ticking tasks off (PATCH), goes straight to the network.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PAGES = `bnb-pages-${VERSION}`;
 const ASSETS = `bnb-assets-${VERSION}`;
 const DATA = `bnb-data-${VERSION}`;
@@ -25,7 +25,7 @@ self.addEventListener("install", (event) => {
       if (!response.ok) return;
       await pages.put("/", response.clone());
       const html = await response.text();
-      const files = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g));
+      const files = new Set(html.match(/\/assets\/[^"'\s)\\]+/g));
       const assets = await caches.open(ASSETS);
       // One missing file shouldn't stop the worker installing; it's fetched again when used.
       // The board's own first fetch also ran before the worker, so keep a copy of its data too.
@@ -65,7 +65,7 @@ self.addEventListener("fetch", (event) => {
   } else if (url.pathname === "/api/calendar") {
     event.respondWith(networkFirst(request, DATA, { markOffline: true }));
   } else if (
-    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/assets/") ||
     url.pathname.startsWith("/icons/") ||
     url.pathname === "/manifest.webmanifest"
   ) {

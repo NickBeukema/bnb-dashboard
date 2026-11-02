@@ -24,11 +24,30 @@ export async function parseFeed(ics: string): Promise<CalendarEvent[]> {
     }));
 }
 
-/** Downloads and parses one property's booking feed. Next caches the download for an hour. */
+/** How long a downloaded feed is reused before it's fetched again */
+export const FEED_TTL_MS = 60 * 60 * 1000;
+
+const feeds = new Map<string, { events: CalendarEvent[]; fetchedAt: number }>();
+
+/**
+ * Downloads and parses one property's booking feed, reusing a download for an hour. Once
+ * that's up, a feed that can't be read falls back to its last good copy; it only fails when
+ * there's none.
+ */
 export async function fetchFeed(url: string): Promise<CalendarEvent[]> {
-  const response = await fetch(url, { next: { revalidate: 3600 } } as RequestInit);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch iCal data: ${response.statusText}`);
+  const cached = feeds.get(url);
+  if (cached && Date.now() - cached.fetchedAt < FEED_TTL_MS) return cached.events;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch iCal data: ${response.statusText}`);
+    }
+    const events = await parseFeed(await response.text());
+    feeds.set(url, { events, fetchedAt: Date.now() });
+    return events;
+  } catch (error) {
+    if (!cached) throw error;
+    console.error("Using the last good copy of a feed:", error);
+    return cached.events;
   }
-  return parseFeed(await response.text());
 }

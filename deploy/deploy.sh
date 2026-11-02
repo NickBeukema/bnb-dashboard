@@ -5,10 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 git pull --ff-only
-# The build needs dev dependencies (Tailwind, TypeScript) whatever NODE_ENV says
+# The build needs dev dependencies (Vite, Tailwind) whatever NODE_ENV says
 npm ci --include=dev --no-audit --no-fund
-# Dev-server leftovers; their stale route types would fail the build's type check
-rm -rf .next/dev
+# Leftovers from the Next.js build
+rm -rf .next
 npm run build
 
 sudo systemctl restart bnb-dashboard.service

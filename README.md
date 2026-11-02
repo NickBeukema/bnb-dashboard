@@ -18,9 +18,10 @@ step with the bookings.
 
 Each call to `/api/calendar` does the following:
 
-1. Reads every property's iCal feed. Each feed is cached for an hour. If a feed can't be read,
-   the others still sync; the response lists it in `failed`, and the board keeps that
-   property's last known stays and names it in the footer.
+1. Reads every property's iCal feed. Each feed is kept in memory for an hour. If a feed can't be
+   read, the server uses its last good copy. If it has none, the others still sync; the response
+   lists it in `failed`, and the board keeps that property's last known stays and names it in
+   the footer.
 2. Plans tasks for every stay except seasonal closures (see [Owner blocks](#owner-blocks)).
    A task is planned once its due date, and the day it hangs off, are both within the next 30 days:
    - **Send Welcome Letter**, due 3 days before check-in at 11:00.
@@ -103,7 +104,7 @@ The cut-off is `PRIVATE_BOOKING_MAX_NIGHTS` in `src/lib/calendar-types.ts`.
 
 ## Setup
 
-You need Node 20.9 or newer (Next.js requires it). The Pi runs Node 24. Create `.env`; it is gitignored, so never commit it.
+You need Node 20.19 or newer (Vite requires it). The Pi runs Node 24. Create `.env`; it is gitignored, so never commit it.
 
 ```sh
 WAVESONG_ICAL_URL=...
@@ -120,8 +121,8 @@ initial and door-code rule live together in `src/lib/properties.ts`.
 
 | Script                            | What it does                                                    |
 | --------------------------------- | --------------------------------------------------------------- |
-| `npm run dev`                     | Starts the dev server on :3000.                                 |
-| `npm run build` / `npm start`     | Production build and server.                                    |
+| `npm run dev`                     | Starts the Vite dev server on :3000, with the API.              |
+| `npm run build` / `npm start`     | Builds into `dist/`, then serves it on :3000 (`PORT`).          |
 | `npm test`                        | Runs the Vitest suite once.                                     |
 | `npm run test:watch`              | Runs Vitest in watch mode.                                      |
 | `npm run coverage`                | Runs the suite with a v8 coverage report in `coverage/`.        |
@@ -139,21 +140,24 @@ The tests sit next to the code as `*.test.ts(x)` files. Shared setup and fixture
   `vi.mock("@doist/todoist-sdk")`.
 - **Time zone:** the suite runs in `America/New_York`, which the npm scripts set. Tests that
   depend on the clock freeze `Date` with `vi.useFakeTimers({ toFake: ["Date"] })`.
-- **Environments:** component tests run in jsdom. API route tests opt into Node with
+- **Environments:** component tests run in jsdom. API tests opt into Node with
   `// @vitest-environment node`.
 
 ## Code map
 
 ```
-src/app/                  layout, globals.css (Tailwind and the shadcn theme), board page, manifest
-src/app/api/              calendar sync and task routes
+index.html                the page shell (head tags, theme script); loads src/main.tsx
+src/main.tsx              mounts the board, service worker, update notice and toasts
+src/globals.css           Tailwind and the shadcn theme
+src/server/app.ts         the API (Hono): calendar sync, task updates, version
+src/server/index.ts       production server: the API plus the built board from dist/client
 src/components/board/     board UI, model.ts (API → stays/tasks), use-board.ts (data and polling)
 src/components/ui/        shadcn components
 src/lib/properties.ts     the four properties
 src/lib/calendar-types.ts API response types shared by server and client
 src/lib/server/           iCal parsing, task planning (pure) and Todoist calls
 deploy/                   the Pi's systemd unit and deploy script
-public/sw.js              service worker (offline copy of the board)
+public/                   web app manifest, icons, and sw.js (service worker; offline copy of the board)
 scripts/make-icons.mts    draws the app icons
 ```
 
@@ -174,7 +178,7 @@ screen like an app.
   next load. Bump `VERSION` in `sw.js` only when changing how it caches.
 - **New version notice:** an installed app can stay open for days, so the board checks
   `GET /api/version` every 5 minutes, when it's reopened and when it's back online. Each build is
-  stamped with its git commit (`BUILD_ID` in `next.config.ts`). When the server's commit differs,
+  stamped with its git commit (`BUILD_ID` in `vite.config.ts`). When the server's commit differs,
   a toast offers **Refresh**; **Later** hides it until the app is next opened.
 - **Icons:** drawn by `npm run icons` from the property colours.
 
@@ -184,7 +188,7 @@ The dashboard runs on a Raspberry Pi 5 that drives the wall TV. Its Tailscale ad
 `100.117.241.60` and the user is `care`.
 
 - **Location:** the repo is at `~/Desktop/bnb-dashboard`, with its own `.env`.
-- **Service:** `bnb-dashboard.service` runs the production server (`next start`) on port 3000.
+- **Service:** `bnb-dashboard.service` runs the production server (`npm start`) on port 3000.
   - The unit file is versioned in [`deploy/bnb-dashboard.service`](deploy/bnb-dashboard.service).
   - If there's no build yet, the service makes one before starting.
 - **Deploy:** run `./deploy/deploy.sh` on the Pi. It does the following:

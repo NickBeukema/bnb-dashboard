@@ -1,7 +1,9 @@
 // @vitest-environment node
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import manifest from "./manifest";
+
+type Manifest = { icons?: { src: string; sizes: string; purpose: string }[] };
+const manifest = (): Manifest => JSON.parse(readFileSync("public/manifest.webmanifest", "utf8"));
 
 describe("manifest", () => {
   it("is installable as a standalone app", () => {

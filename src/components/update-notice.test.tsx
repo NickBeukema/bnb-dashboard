@@ -12,7 +12,7 @@ const serverVersion = (version: string) =>
 const flush = () => act(async () => {});
 
 beforeEach(() => {
-  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("PROD", true);
   vi.mocked(toast).mockReset();
 });
 afterEach(() => {
@@ -70,7 +70,7 @@ describe("UpdateNotice", () => {
     await flush();
     expect(toast).not.toHaveBeenCalled();
 
-    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("PROD", false);
     vi.mocked(fetch).mockClear();
     render(<UpdateNotice />);
     await flush();

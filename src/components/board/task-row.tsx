@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useId, useRef, useState } from "react";
 import { format } from "date-fns";
 import { KeyRoundIcon, ListTodoIcon, MailIcon, StarIcon, Trash2Icon } from "lucide-react";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { BUILD_ID } from "@/lib/version";
@@ -14,7 +12,7 @@ const TOAST_ID = "new-version";
 export function UpdateNotice() {
   useEffect(() => {
     // Dev builds all share one id, and reload themselves anyway
-    if (process.env.NODE_ENV !== "production") return;
+    if (!import.meta.env.PROD) return;
     let showing = false;
     // Dismissed with "Later": ask again next time the app is opened, not every few minutes
     let snoozed = false;

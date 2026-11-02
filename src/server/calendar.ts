@@ -1,5 +1,4 @@
 import { TodoistApi } from "@doist/todoist-sdk";
-import { NextResponse } from "next/server";
 import type { CalendarSource } from "@/lib/calendar-types";
 import { PROPERTY_CONFIG } from "@/lib/properties";
 import { fetchFeed } from "@/lib/server/ical";
@@ -105,10 +104,10 @@ async function loadCalendar(): Promise<{ body: object; status: number }> {
 // already running share its result, so two syncs can't race and create the same task twice.
 let inFlight: Promise<{ body: object; status: number }> | null = null;
 
-export async function GET() {
+export async function getCalendar() {
   inFlight ??= loadCalendar().finally(() => {
     inFlight = null;
   });
   const { body, status } = await inFlight;
-  return NextResponse.json(body, { status });
+  return Response.json(body, { status });
 }

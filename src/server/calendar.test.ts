@@ -72,9 +72,11 @@ const fetchMock = vi.fn(async (input: unknown) => {
 const page = <T>(results: T[], nextCursor: string | null = null) => ({ results, nextCursor });
 const completedPage = <T>(items: T[], nextCursor: string | null = null) => ({ items, nextCursor });
 
+// A fresh copy of the app, with no sync in flight and no feeds cached
 async function loadRoute() {
   vi.resetModules();
-  return import("./route");
+  const { default: app } = await import("./app");
+  return { GET: () => app.request("/api/calendar") };
 }
 
 async function get() {
@@ -170,17 +172,40 @@ describe("GET /api/calendar: events", () => {
     expect(body.lastUpdated).toBe("2026-10-07T16:00:00.000Z");
   });
 
-  it("fetches each feed with an hour of Next caching", async () => {
-    await get();
+  it("fetches each feed, then reuses it for an hour", async () => {
+    const { GET } = await loadRoute();
+    await GET();
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       FEEDS.WAVESONG_ICAL_URL,
       FEEDS.RED_ICAL_URL,
       FEEDS.LAKE_BREEZE_ICAL_URL,
       FEEDS.NAUTICAL_NEST_ICAL_URL,
     ]);
-    for (const [, init] of fetchMock.mock.calls as unknown as [string, RequestInit][]) {
-      expect(init).toEqual({ next: { revalidate: 3600 } });
-    }
+
+    vi.setSystemTime(new Date("2026-10-07T16:59:00.000Z"));
+    await GET();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    vi.setSystemTime(new Date("2026-10-07T17:00:00.000Z"));
+    await GET();
+    expect(fetchMock).toHaveBeenCalledTimes(8);
+  });
+
+  it("keeps a feed's last good copy when it can't be fetched again", async () => {
+    feeds[FEEDS.RED_ICAL_URL] = ics([{ uid: "r", start: "20261020", end: "20261022" }]);
+    const { GET } = await loadRoute();
+    await GET();
+
+    vi.setSystemTime(new Date("2026-10-07T17:00:00.000Z"));
+    feeds[FEEDS.RED_ICAL_URL] = new Response("nope", { status: 503, statusText: "Unavailable" });
+    const body = await (await GET()).json();
+
+    expect(body.failed).toEqual([]);
+    expect(body.events[1].events.map((e: { id: string }) => e.id)).toEqual(["r"]);
+    expect(console.error).toHaveBeenCalledWith(
+      "Using the last good copy of a feed:",
+      new Error("Failed to fetch iCal data: Unavailable"),
+    );
   });
 
   it("returns check-in and checkout as plain local days", async () => {

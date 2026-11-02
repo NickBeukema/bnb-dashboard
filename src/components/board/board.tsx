@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { format, isToday, startOfDay } from "date-fns";
 import { ListTodoIcon, RotateCwIcon, TriangleAlertIcon } from "lucide-react";

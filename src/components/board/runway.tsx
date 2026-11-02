@@ -1,5 +1,3 @@
-"use client";
-
 import { addDays, format, isSameDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";

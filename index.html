@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Draw under the notch and home indicator; globals.css pads by the safe-area insets -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="theme-color"
+      content="oklch(0.972 0.006 235)"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="oklch(0.165 0.012 250)"
+      media="(prefers-color-scheme: dark)"
+    />
+    <title>BnB Board</title>
+    <meta name="description" content="Stays and to-dos across the properties" />
+    <meta name="application-name" content="BnB Board" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="BnB Board" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <script>
+      // Apply the last light/dark choice before first paint, so the TV doesn't flash light at
+      // night while the board loads. next-themes keeps it in this key (see theme.tsx).
+      try {
+        if (localStorage.getItem("bnb-theme") === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

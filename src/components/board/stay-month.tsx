@@ -1,5 +1,3 @@
-"use client";
-
 import { type TouchEvent, useRef, useState } from "react";
 import {
   addDays,

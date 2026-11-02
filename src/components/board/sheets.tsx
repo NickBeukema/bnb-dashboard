@@ -1,5 +1,3 @@
-"use client";
-
 import { addDays, format, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
